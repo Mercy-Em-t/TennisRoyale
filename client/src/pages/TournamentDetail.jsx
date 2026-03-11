@@ -1,0 +1,173 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  getTournament,
+  openRegistration,
+  closeRegistration,
+  openLateRegistration,
+  closeLateRegistration,
+  closeTournament,
+  archiveTournament,
+  publishPools,
+  generateMatches,
+} from '../utils/api';
+import RegistrationForm from '../components/RegistrationForm';
+import RegistrationList from '../components/RegistrationList';
+import PoolManager from '../components/PoolManager';
+import MatchList from '../components/MatchList';
+import BracketView from '../components/BracketView';
+import ExportButton from '../components/ExportButton';
+
+const LIFECYCLE_ACTIONS = {
+  draft: [{ label: 'Open Registration', action: openRegistration }],
+  registration_open: [{ label: 'Close Registration', action: closeRegistration }],
+  registration_closed: [
+    { label: 'Open Late Registration', action: openLateRegistration },
+  ],
+  late_registration_open: [
+    { label: 'Close Late Registration', action: closeLateRegistration },
+  ],
+  late_registration_closed: [],
+  in_progress: [{ label: 'Close Tournament', action: closeTournament }],
+  closed: [{ label: 'Archive Tournament', action: archiveTournament }],
+};
+
+export default function TournamentDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [tournament, setTournament] = useState(null);
+  const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState('');
+
+  const fetchTournament = useCallback(async () => {
+    try {
+      const data = await getTournament(id);
+      setTournament(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [id]);
+
+  useEffect(() => { fetchTournament(); }, [fetchTournament]);
+
+  const handleAction = async (label, actionFn) => {
+    setActionLoading(label);
+    setError('');
+    try {
+      await actionFn(id);
+      await fetchTournament();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handlePublishPools = async () => {
+    setActionLoading('Publish Pools');
+    setError('');
+    try {
+      await publishPools(id);
+      await fetchTournament();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleGenerateMatches = async () => {
+    setActionLoading('Generate Matches');
+    setError('');
+    try {
+      await generateMatches(id);
+      await fetchTournament();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  if (!tournament && !error) return <p>Loading tournament…</p>;
+  if (error && !tournament) return <p className="error">{error}</p>;
+
+  const status = tournament.status;
+  const actions = LIFECYCLE_ACTIONS[status] || [];
+  const showRegistrationForm = status === 'registration_open' || status === 'late_registration_open';
+  const showPoolManager = [
+    'registration_closed', 'late_registration_open', 'late_registration_closed', 'in_progress',
+  ].includes(status);
+  const showMatches = ['in_progress', 'closed', 'archived'].includes(status);
+  const showBracket = ['in_progress', 'closed', 'archived'].includes(status);
+  const canPublishPools = ['registration_closed', 'late_registration_closed'].includes(status);
+  const canGenerateMatches = ['registration_closed', 'late_registration_closed'].includes(status);
+
+  return (
+    <div className="tournament-detail">
+      <button className="back-btn" onClick={() => navigate('/')}>← Back</button>
+
+      <div className="tournament-header">
+        <h2>{tournament.name}</h2>
+        <span className={`status-badge status-${status}`}>{status.replace(/_/g, ' ')}</span>
+      </div>
+
+      {error && <p className="error">{error}</p>}
+
+      <div className="action-bar">
+        {actions.map(({ label, action }) => (
+          <button
+            key={label}
+            onClick={() => handleAction(label, action)}
+            disabled={actionLoading === label}
+          >
+            {actionLoading === label ? '…' : label}
+          </button>
+        ))}
+        {canPublishPools && (
+          <button onClick={handlePublishPools} disabled={actionLoading === 'Publish Pools'}>
+            {actionLoading === 'Publish Pools' ? '…' : 'Publish Pools'}
+          </button>
+        )}
+        {canGenerateMatches && (
+          <button onClick={handleGenerateMatches} disabled={actionLoading === 'Generate Matches'}>
+            {actionLoading === 'Generate Matches' ? '…' : 'Generate Matches'}
+          </button>
+        )}
+        <ExportButton tournamentId={id} />
+      </div>
+
+      {showRegistrationForm && (
+        <section className="section">
+          <RegistrationForm tournamentId={id} onRegistered={fetchTournament} />
+        </section>
+      )}
+
+      <section className="section">
+        <RegistrationList tournamentId={id} />
+      </section>
+
+      {showPoolManager && (
+        <section className="section">
+          <PoolManager
+            tournamentId={id}
+            status={status}
+            onPoolsChanged={fetchTournament}
+          />
+        </section>
+      )}
+
+      {showMatches && (
+        <section className="section">
+          <MatchList tournamentId={id} status={status} />
+        </section>
+      )}
+
+      {showBracket && (
+        <section className="section">
+          <BracketView tournamentId={id} status={status} />
+        </section>
+      )}
+    </div>
+  );
+}
