@@ -25,7 +25,7 @@ export default function PoolsPage({ tournamentId, tournament }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [newPoolName, setNewPoolName] = useState('');
-  const [autoCount, setAutoCount] = useState(2);
+  const [autoCount, setAutoCount] = useState(4);
   const [generatedPools, setGeneratedPools] = useState<Set<number>>(new Set());
   const [lateGeneratedPools, setLateGeneratedPools] = useState<Set<number>>(new Set());
 
@@ -192,14 +192,14 @@ export default function PoolsPage({ tournamentId, tournament }: Props) {
           + Add Pool
         </button>
         <div className="flex items-center gap-2 ml-4">
-          <span className="text-sm text-gray-600">Auto-assign:</span>
+          <span className="text-sm text-gray-600">Pool size:</span>
           <select
             value={autoCount}
             onChange={(e) => setAutoCount(Number(e.target.value))}
             className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {[2, 4, 8].map((n) => (
-              <option key={n} value={n}>{n} pools</option>
+            {[2, 4, 6, 8].map((n) => (
+              <option key={n} value={n}>{n} players/pool</option>
             ))}
           </select>
           <button

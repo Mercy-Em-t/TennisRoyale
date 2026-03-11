@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3001/api',
+  baseURL: (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL ?? 'http://localhost:3001/api',
 });
 
 api.interceptors.request.use((config) => {
@@ -59,9 +59,9 @@ export const reorderPoolPlayers = (
   tournamentId: number,
   poolId: number,
   playerIds: number[]
-) => api.put(`/tournaments/${tournamentId}/pools/${poolId}/players/reorder`, { player_ids: playerIds });
-export const autoAssignPools = (tournamentId: number, poolCount: number) =>
-  api.post(`/tournaments/${tournamentId}/pools/auto-assign`, { pool_count: poolCount });
+) => api.put(`/tournaments/${tournamentId}/pools/${poolId}/players/reorder`, { order: playerIds });
+export const autoAssignPools = (tournamentId: number, poolSize: number) =>
+  api.post(`/tournaments/${tournamentId}/pools/auto-assign`, { pool_size: poolSize });
 export const generatePoolMatches = (tournamentId: number, poolId: number) =>
   api.post(`/tournaments/${tournamentId}/pools/${poolId}/generate-matches`);
 
