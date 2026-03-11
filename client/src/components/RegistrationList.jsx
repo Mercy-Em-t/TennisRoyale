@@ -39,19 +39,25 @@ export default function RegistrationList({ tournamentId }) {
             </tr>
           </thead>
           <tbody>
-            {registrations.map((r, i) => (
-              <tr key={r.id}>
-                <td>{i + 1}</td>
-                <td>{r.playerName}</td>
-                <td>{r.playerEmail}</td>
-                <td>
-                  <span className={`reg-type ${r.isLateRegistration ? 'late' : 'regular'}`}>
-                    {r.isLateRegistration ? 'Late' : 'Regular'}
-                  </span>
-                </td>
-                <td>{new Date(r.createdAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
+            {registrations.map((r, i) => {
+              const name = r.playerName || r.player_name;
+              const email = r.playerEmail || r.player_email;
+              const isLate = r.isLateRegistration || r.is_late;
+              const createdAt = r.createdAt || r.created_at;
+              return (
+                <tr key={r.id}>
+                  <td>{i + 1}</td>
+                  <td>{name}</td>
+                  <td>{email}</td>
+                  <td>
+                    <span className={`reg-type ${isLate ? 'late' : 'regular'}`}>
+                      {isLate ? 'Late' : 'Regular'}
+                    </span>
+                  </td>
+                  <td>{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

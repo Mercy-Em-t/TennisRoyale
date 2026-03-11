@@ -50,13 +50,13 @@ export default function PoolManager({ tournamentId, status, onPoolsChanged }) {
     return players.map((p) => ({
       playerId: p.playerId || p.id,
       seedPosition: p.seedPosition ?? p.seed ?? 0,
-      playerName: p.playerName || p.Registration?.playerName || findPlayerName(p.playerId || p.id),
+      playerName: p.playerName || p.player_name || p.Registration?.playerName || p.Registration?.player_name || findPlayerName(p.playerId || p.id),
     })).sort((a, b) => a.seedPosition - b.seedPosition);
   };
 
   const findPlayerName = (playerId) => {
     const reg = registrations.find((r) => (r.playerId || r.id) === playerId);
-    return reg ? reg.playerName : `Player ${playerId}`;
+    return reg ? (reg.playerName || reg.player_name) : `Player ${playerId}`;
   };
 
   const handleCreatePool = async () => {
@@ -217,7 +217,7 @@ export default function PoolManager({ tournamentId, status, onPoolsChanged }) {
             {unassigned.map((r) => {
               const player = {
                 playerId: r.playerId || r.id,
-                playerName: r.playerName,
+                playerName: r.playerName || r.player_name,
                 seedPosition: 0,
               };
               return (
