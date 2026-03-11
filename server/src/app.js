@@ -10,6 +10,7 @@ const createMatchRoutes = require('./routes/matches');
 const createPoolRoutes = require('./routes/pools');
 const createStaffRoutes = require('./routes/staff');
 const createMessageRoutes = require('./routes/messages');
+const createPaymentRoutes = require('./routes/payments');
 
 function createApp(dbPath) {
   const app = express();
@@ -40,6 +41,7 @@ function createApp(dbPath) {
   app.use('/api/tournaments/:tournamentId/pools', createPoolRoutes(db));
   app.use('/api/tournaments/:tournamentId/staff', createStaffRoutes(db));
   app.use('/api/tournaments/:tournamentId/messages', createMessageRoutes(db));
+  app.use('/api/tournaments/:tournamentId/payments', createPaymentRoutes(db));
 
   // Health check
   app.get('/api/health', (req, res) => {

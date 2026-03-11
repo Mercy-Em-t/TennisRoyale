@@ -34,6 +34,12 @@ function initializeDb(db) {
       location TEXT,
       max_participants INTEGER DEFAULT 32,
       fee REAL DEFAULT 0,
+      service_fee REAL DEFAULT 0,
+      platform_fee_percent REAL DEFAULT 10,
+      prize_pool REAL DEFAULT 0,
+      registration_deadline TEXT,
+      rules TEXT,
+      bracket_type TEXT DEFAULT 'single_elimination',
       poster_url TEXT,
       status TEXT DEFAULT 'draft',
       late_registration_open INTEGER DEFAULT 0,
@@ -116,6 +122,34 @@ function initializeDb(db) {
       recipient_type TEXT DEFAULT 'broadcast',
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      registration_id TEXT NOT NULL,
+      player_id TEXT NOT NULL,
+      entry_fee REAL NOT NULL DEFAULT 0,
+      service_fee REAL NOT NULL DEFAULT 0,
+      total_paid REAL NOT NULL DEFAULT 0,
+      platform_amount REAL NOT NULL DEFAULT 0,
+      host_amount REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'held',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+      FOREIGN KEY (registration_id) REFERENCES registrations(id),
+      FOREIGN KEY (player_id) REFERENCES players(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS host_withdrawals (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      host_id TEXT NOT NULL,
+      amount REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+      FOREIGN KEY (host_id) REFERENCES users(id)
     );
   `);
   return db;

@@ -58,12 +58,32 @@ function createRegistrationRoutes(db) {
       'INSERT INTO registrations (id, tournament_id, player_id, is_late) VALUES (?, ?, ?, ?)'
     ).run(regId, req.params.tournamentId, player.id, isLate);
 
+    // Create payment record if there's an entry fee
+    const entryFee = tournament.fee || 0;
+    const serviceFee = tournament.service_fee || 0;
+    const totalPaid = entryFee + serviceFee;
+
+    if (totalPaid > 0) {
+      const platformFeePercent = tournament.platform_fee_percent || 10;
+      const platformAmount = Math.round((entryFee * platformFeePercent / 100) * 100) / 100 + serviceFee;
+      const hostAmount = Math.round((entryFee - (entryFee * platformFeePercent / 100)) * 100) / 100;
+
+      const paymentId = uuidv4();
+      db.prepare(`
+        INSERT INTO payments (id, tournament_id, registration_id, player_id, entry_fee, service_fee, total_paid, platform_amount, host_amount, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'held')
+      `).run(paymentId, req.params.tournamentId, regId, player.id, entryFee, serviceFee, totalPaid, platformAmount, hostAmount);
+    }
+
     const registration = db.prepare(`
       SELECT r.*, p.name as player_name, p.email as player_email
       FROM registrations r JOIN players p ON r.player_id = p.id
       WHERE r.id = ?
     `).get(regId);
-    res.status(201).json(registration);
+
+    // Include payment info in response
+    const payment = db.prepare('SELECT * FROM payments WHERE registration_id = ?').get(regId);
+    res.status(201).json({ ...registration, payment: payment || null });
   });
 
   // Remove registration (host only)
