@@ -119,6 +119,24 @@ function createRouter(db) {
         ORDER BY timestamp DESC
       `).all(req.params.id);
 
+      // Helper function to safely query logs in batches to avoid performance issues with large IN clauses
+      const MAX_BATCH_SIZE = 500;
+      function getLogsForTable(tableName, recordIds) {
+        if (recordIds.length === 0) return [];
+        
+        const results = [];
+        // Process in batches to avoid SQLite query limits
+        for (let i = 0; i < recordIds.length; i += MAX_BATCH_SIZE) {
+          const batch = recordIds.slice(i, i + MAX_BATCH_SIZE);
+          const batchLogs = db.prepare(`
+            SELECT * FROM audit_logs 
+            WHERE table_name = ? AND record_id IN (${batch.map(() => '?').join(',')})
+          `).all(tableName, ...batch);
+          results.push(...batchLogs);
+        }
+        return results;
+      }
+
       // Get registration IDs for this tournament
       const registrationIds = db.prepare(`
         SELECT id FROM registrations WHERE tournament_id = ?
@@ -139,40 +157,13 @@ function createRouter(db) {
         SELECT id FROM courts WHERE tournament_id = ?
       `).all(req.params.id).map(c => c.id);
 
-      // Build comprehensive query for all related records
+      // Build comprehensive query for all related records using batched queries
       let allLogs = [...tournamentLogs];
 
-      if (registrationIds.length > 0) {
-        const regLogs = db.prepare(`
-          SELECT * FROM audit_logs 
-          WHERE table_name = 'registrations' AND record_id IN (${registrationIds.map(() => '?').join(',')})
-        `).all(...registrationIds);
-        allLogs = allLogs.concat(regLogs);
-      }
-
-      if (poolIds.length > 0) {
-        const poolLogs = db.prepare(`
-          SELECT * FROM audit_logs 
-          WHERE table_name = 'pools' AND record_id IN (${poolIds.map(() => '?').join(',')})
-        `).all(...poolIds);
-        allLogs = allLogs.concat(poolLogs);
-      }
-
-      if (matchIds.length > 0) {
-        const matchLogs = db.prepare(`
-          SELECT * FROM audit_logs 
-          WHERE table_name = 'matches' AND record_id IN (${matchIds.map(() => '?').join(',')})
-        `).all(...matchIds);
-        allLogs = allLogs.concat(matchLogs);
-      }
-
-      if (courtIds.length > 0) {
-        const courtLogs = db.prepare(`
-          SELECT * FROM audit_logs 
-          WHERE table_name = 'courts' AND record_id IN (${courtIds.map(() => '?').join(',')})
-        `).all(...courtIds);
-        allLogs = allLogs.concat(courtLogs);
-      }
+      allLogs = allLogs.concat(getLogsForTable('registrations', registrationIds));
+      allLogs = allLogs.concat(getLogsForTable('pools', poolIds));
+      allLogs = allLogs.concat(getLogsForTable('matches', matchIds));
+      allLogs = allLogs.concat(getLogsForTable('courts', courtIds));
 
       // Sort by timestamp and paginate
       allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));

@@ -550,19 +550,30 @@ function createRouter(db) {
       `).get(match.tournament_id, nextStage, nextPosition);
 
       if (!nextMatch) {
-        // Create placeholder match
-        const slot = match.bracket_position % 2 === 1 ? 'player1' : 'player2';
-        const result = db.prepare(`
-          INSERT INTO matches (tournament_id, ${slot}_registration_id, bracket_stage, bracket_position, round_number)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(match.tournament_id, match.winner_registration_id, nextStage, nextPosition, currentIndex + 2);
+        // Create placeholder match - use separate prepared statements to avoid SQL injection
+        let result;
+        if (match.bracket_position % 2 === 1) {
+          result = db.prepare(`
+            INSERT INTO matches (tournament_id, player1_registration_id, bracket_stage, bracket_position, round_number)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(match.tournament_id, match.winner_registration_id, nextStage, nextPosition, currentIndex + 2);
+        } else {
+          result = db.prepare(`
+            INSERT INTO matches (tournament_id, player2_registration_id, bracket_stage, bracket_position, round_number)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(match.tournament_id, match.winner_registration_id, nextStage, nextPosition, currentIndex + 2);
+        }
         
         nextMatch = db.prepare('SELECT * FROM matches WHERE id = ?').get(result.lastInsertRowid);
       } else {
-        // Update existing match
-        const slot = match.bracket_position % 2 === 1 ? 'player1_registration_id' : 'player2_registration_id';
-        db.prepare(`UPDATE matches SET ${slot} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-          .run(match.winner_registration_id, nextMatch.id);
+        // Update existing match - use separate prepared statements to avoid SQL injection
+        if (match.bracket_position % 2 === 1) {
+          db.prepare(`UPDATE matches SET player1_registration_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+            .run(match.winner_registration_id, nextMatch.id);
+        } else {
+          db.prepare(`UPDATE matches SET player2_registration_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+            .run(match.winner_registration_id, nextMatch.id);
+        }
         
         nextMatch = db.prepare('SELECT * FROM matches WHERE id = ?').get(nextMatch.id);
       }
