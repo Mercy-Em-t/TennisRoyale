@@ -97,4 +97,12 @@ function initializeDatabase() {
 
 initializeDatabase();
 
+/**
+ * Build a parameterized IN clause: returns { clause: "IN (?,?,?)", values: [...] }
+ */
+db.buildInClause = (ids) => ({
+  clause: `IN (${ids.map(() => '?').join(',')})`,
+  values: ids,
+});
+
 module.exports = db;

@@ -13,9 +13,10 @@ router.get('/', (req, res) => {
   const tournament = getTournament(req.params.id);
   if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
 
-  const brackets = db.prepare(`
-    SELECT b.*, m.player1_id, m.player2_id, m.winner_id, m.status as match_status,
-           m.score_player1, m.score_player2, m.scheduled_at,
+  const entries = db.prepare(`
+    SELECT b.id, b.tournament_id, b.round, b.match_id, b.next_match_id,
+           m.player1_id, m.player2_id, m.winner_id, m.status as match_status,
+           m.score_player1, m.score_player2, m.scheduled_at, m.match_number, m.bracket_position,
            p1.name as player1_name, p2.name as player2_name
     FROM brackets b
     JOIN matches m ON m.id = b.match_id
@@ -25,11 +26,30 @@ router.get('/', (req, res) => {
     ORDER BY b.round ASC, b.id ASC
   `).all(req.params.id);
 
-  // Group by round
+  // Shape into nested structure expected by client
   const rounds = {};
-  for (const entry of brackets) {
+  for (const entry of entries) {
     if (!rounds[entry.round]) rounds[entry.round] = [];
-    rounds[entry.round].push(entry);
+    rounds[entry.round].push({
+      id: entry.id,
+      round: entry.round,
+      match_id: entry.match_id,
+      next_match_id: entry.next_match_id,
+      match: {
+        id: entry.match_id,
+        player1_id: entry.player1_id,
+        player2_id: entry.player2_id,
+        player1_name: entry.player1_name,
+        player2_name: entry.player2_name,
+        winner_id: entry.winner_id,
+        status: entry.match_status,
+        score_player1: entry.score_player1,
+        score_player2: entry.score_player2,
+        scheduled_at: entry.scheduled_at,
+        match_number: entry.match_number,
+        bracket_position: entry.bracket_position,
+      },
+    });
   }
 
   res.json({ tournament_id: parseInt(req.params.id), rounds });
@@ -78,7 +98,8 @@ router.post('/generate', authenticate, (req, res) => {
   const existingBracketEntries = db.prepare('SELECT * FROM brackets WHERE tournament_id = ?').all(req.params.id);
   if (existingBracketEntries.length) {
     const matchIds = existingBracketEntries.map(b => b.match_id);
-    db.prepare(`DELETE FROM matches WHERE id IN (${matchIds.map(() => '?').join(',')})`).run(...matchIds);
+    const { clause, values } = db.buildInClause(matchIds);
+    db.prepare(`DELETE FROM matches WHERE id ${clause}`).run(...values);
   }
   db.prepare('DELETE FROM brackets WHERE tournament_id = ?').run(req.params.id);
 
@@ -211,9 +232,10 @@ router.post('/generate', authenticate, (req, res) => {
   generate();
 
   // Return bracket
-  const brackets = db.prepare(`
-    SELECT b.*, m.player1_id, m.player2_id, m.winner_id, m.status as match_status,
-           m.score_player1, m.score_player2, m.scheduled_at, m.bracket_position,
+  const entries = db.prepare(`
+    SELECT b.id, b.tournament_id, b.round, b.match_id, b.next_match_id,
+           m.player1_id, m.player2_id, m.winner_id, m.status as match_status,
+           m.score_player1, m.score_player2, m.scheduled_at, m.match_number, m.bracket_position,
            p1.name as player1_name, p2.name as player2_name
     FROM brackets b
     JOIN matches m ON m.id = b.match_id
@@ -224,9 +246,28 @@ router.post('/generate', authenticate, (req, res) => {
   `).all(req.params.id);
 
   const rounds = {};
-  for (const entry of brackets) {
+  for (const entry of entries) {
     if (!rounds[entry.round]) rounds[entry.round] = [];
-    rounds[entry.round].push(entry);
+    rounds[entry.round].push({
+      id: entry.id,
+      round: entry.round,
+      match_id: entry.match_id,
+      next_match_id: entry.next_match_id,
+      match: {
+        id: entry.match_id,
+        player1_id: entry.player1_id,
+        player2_id: entry.player2_id,
+        player1_name: entry.player1_name,
+        player2_name: entry.player2_name,
+        winner_id: entry.winner_id,
+        status: entry.match_status,
+        score_player1: entry.score_player1,
+        score_player2: entry.score_player2,
+        scheduled_at: entry.scheduled_at,
+        match_number: entry.match_number,
+        bracket_position: entry.bracket_position,
+      },
+    });
   }
 
   res.status(201).json({ tournament_id: parseInt(req.params.id), rounds });

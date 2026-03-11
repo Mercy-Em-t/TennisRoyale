@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tennis-royale-secret-2024';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('WARNING: JWT_SECRET environment variable is not set. Using default value is insecure in production.');
+}
 
 function authenticate(req, res, next) {
   const authHeader = req.headers['authorization'];

@@ -136,11 +136,12 @@ router.get('/:id/export', authenticate, (req, res) => {
 
   const players = db.prepare('SELECT * FROM players WHERE tournament_id = ?').all(req.params.id);
   const pools = db.prepare('SELECT * FROM pools WHERE tournament_id = ?').all(req.params.id);
-  const poolPlayers = pools.length
+  const poolIds = pools.map(p => p.id);
+  const poolPlayers = poolIds.length
     ? db.prepare(`SELECT pp.*, p.name, p.seed FROM pool_players pp
         JOIN players p ON p.id = pp.player_id
-        WHERE pp.pool_id IN (${pools.map(() => '?').join(',')})`)
-        .all(...pools.map(p => p.id))
+        WHERE pp.pool_id ${db.buildInClause(poolIds).clause}`)
+        .all(...poolIds)
     : [];
   const matches = db.prepare('SELECT * FROM matches WHERE tournament_id = ?').all(req.params.id);
   const brackets = db.prepare('SELECT * FROM brackets WHERE tournament_id = ?').all(req.params.id);

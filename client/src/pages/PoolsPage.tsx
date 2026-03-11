@@ -19,7 +19,7 @@ interface Props {
   tournament: Tournament;
 }
 
-export default function PoolsPage({ tournamentId, tournament }: Props) {
+export default function PoolsPage({ tournamentId, tournament: _tournament }: Props) {
   const [pools, setPools] = useState<Pool[]>([]);
   const [unassigned, setUnassigned] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,9 +163,6 @@ export default function PoolsPage({ tournamentId, tournament }: Props) {
   };
 
   const hasLatePlayersInPool = (pool: Pool) => pool.players.some((p) => p.status === 'late');
-
-  // Suppress unused variable warning for tournament prop
-  void tournament;
 
   if (loading) return <div className="text-center text-gray-500 py-8">Loading...</div>;
 

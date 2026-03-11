@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function BracketPage({ tournamentId, tournament }: Props) {
-  const [bracket, setBracket] = useState<BracketMatch[]>([]);
+  const [rounds, setRounds] = useState<Record<number, BracketMatch[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -17,7 +17,7 @@ export default function BracketPage({ tournamentId, tournament }: Props) {
   const load = useCallback(async () => {
     try {
       const res = await getBracket(tournamentId);
-      setBracket(res.data.bracket || res.data || []);
+      setRounds(res.data.rounds || {});
     } catch {
       setError('Failed to load bracket');
     } finally {
@@ -53,16 +53,10 @@ export default function BracketPage({ tournamentId, tournament }: Props) {
     }
   };
 
-  // Group bracket matches by round
-  const rounds = bracket.reduce<Record<number, BracketMatch[]>>((acc, bm) => {
-    if (!acc[bm.round]) acc[bm.round] = [];
-    acc[bm.round].push(bm);
-    return acc;
-  }, {});
-
+  // Bracket rounds already grouped from API
   const roundNumbers = Object.keys(rounds).map(Number).sort((a, b) => a - b);
-
   const maxRound = Math.max(...roundNumbers, 0);
+  const bracketEmpty = roundNumbers.length === 0;
 
   const getRoundLabel = (round: number) => {
     if (round === maxRound) return 'Final';
@@ -92,7 +86,7 @@ export default function BracketPage({ tournamentId, tournament }: Props) {
         )}
       </div>
 
-      {bracket.length === 0 ? (
+      {bracketEmpty ? (
         <div className="text-center text-gray-400 py-12 bg-white rounded-xl border">
           {tournament.status === 'in_progress' ? (
             <div>

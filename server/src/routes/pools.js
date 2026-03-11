@@ -176,7 +176,8 @@ router.post('/auto-assign', authenticate, (req, res) => {
   const existingPools = db.prepare('SELECT id FROM pools WHERE tournament_id = ?').all(req.params.id);
   if (existingPools.length) {
     const poolIds = existingPools.map(p => p.id);
-    db.prepare(`DELETE FROM pool_players WHERE pool_id IN (${poolIds.map(() => '?').join(',')})`).run(...poolIds);
+    const { clause, values } = db.buildInClause(poolIds);
+    db.prepare(`DELETE FROM pool_players WHERE pool_id ${clause}`).run(...values);
   }
   db.prepare('DELETE FROM pools WHERE tournament_id = ?').run(req.params.id);
 
