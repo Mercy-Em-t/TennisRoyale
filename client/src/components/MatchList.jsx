@@ -24,7 +24,7 @@ export default function MatchList({ tournamentId, status }) {
   // Group matches by round/stage
   const grouped = {};
   matches.forEach((m) => {
-    const stage = m.bracketStage || m.stage || m.round || 'Pool Play';
+    const stage = m.bracket_stage || m.bracketStage || m.stage || m.round || 'Pool Play';
     if (!grouped[stage]) grouped[stage] = [];
     grouped[stage].push(m);
   });
@@ -65,8 +65,8 @@ function MatchCard({ match, editable, onUpdated }) {
   const [score2, setScore2] = useState('');
   const [error, setError] = useState('');
 
-  const player1Name = match.Player1?.playerName || match.player1Name || `Player ${match.player1Id || '?'}`;
-  const player2Name = match.Player2?.playerName || match.player2Name || `Player ${match.player2Id || '?'}`;
+  const player1Name = match.player1_name || match.Player1?.playerName || match.player1Name || `Player ${match.player1_id || match.player1Id || '?'}`;
+  const player2Name = match.player2_name || match.Player2?.playerName || match.player2Name || `Player ${match.player2_id || match.player2Id || '?'}`;
 
   const handleSchedule = async () => {
     if (!scheduledAt) return;
@@ -92,26 +92,26 @@ function MatchCard({ match, editable, onUpdated }) {
   };
 
   return (
-    <div className={`match-card ${match.winnerId ? 'completed' : ''}`}>
+    <div className={`match-card ${(match.winner_id || match.winnerId) ? 'completed' : ''}`}>
       <div className="match-players">
-        <span className={match.winnerId === match.player1Id ? 'winner' : ''}>
+        <span className={(match.winner_id || match.winnerId) === (match.player1_id || match.player1Id) ? 'winner' : ''}>
           {player1Name}
         </span>
         <span className="vs">vs</span>
-        <span className={match.winnerId === match.player2Id ? 'winner' : ''}>
+        <span className={(match.winner_id || match.winnerId) === (match.player2_id || match.player2Id) ? 'winner' : ''}>
           {player2Name}
         </span>
       </div>
 
-      {(match.scorePlayer1 != null || match.scorePlayer2 != null) && (
+      {((match.score_player1 ?? match.scorePlayer1) != null || (match.score_player2 ?? match.scorePlayer2) != null) && (
         <div className="match-score">
-          {match.scorePlayer1} – {match.scorePlayer2}
+          {match.score_player1 ?? match.scorePlayer1} – {match.score_player2 ?? match.scorePlayer2}
         </div>
       )}
 
-      {match.scheduledAt && (
+      {(match.scheduled_at || match.scheduledAt) && (
         <div className="match-schedule">
-          📅 {new Date(match.scheduledAt).toLocaleString()}
+          📅 {new Date(match.scheduled_at || match.scheduledAt).toLocaleString()}
         </div>
       )}
 

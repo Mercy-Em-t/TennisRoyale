@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { advanceBracket } from '../utils/api';
 
 const BRACKET_STAGES = [
-  'round_of_32',
-  'round_of_16',
-  'quarterfinals',
-  'semifinals',
+  'quarterfinal',
+  'semifinal',
   'final',
 ];
 

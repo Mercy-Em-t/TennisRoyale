@@ -33,9 +33,9 @@ export default function PoolManager({ tournamentId, status, onPoolsChanged }) {
       const assignedIds = new Set();
       fetchedPools.forEach((pool) => {
         const players = pool.players || pool.PoolPlayers || [];
-        players.forEach((p) => assignedIds.add(p.playerId || p.id));
+        players.forEach((p) => assignedIds.add(p.player_id || p.playerId || p.id));
       });
-      setUnassigned(regs.filter((r) => !assignedIds.has(r.playerId || r.id)));
+      setUnassigned(regs.filter((r) => !assignedIds.has(r.player_id || r.playerId || r.id)));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -48,15 +48,15 @@ export default function PoolManager({ tournamentId, status, onPoolsChanged }) {
   const getPoolPlayers = (pool) => {
     const players = pool.players || pool.PoolPlayers || [];
     return players.map((p) => ({
-      playerId: p.playerId || p.id,
-      seedPosition: p.seedPosition ?? p.seed ?? 0,
-      playerName: p.playerName || p.player_name || p.Registration?.playerName || p.Registration?.player_name || findPlayerName(p.playerId || p.id),
+      playerId: p.player_id || p.playerId || p.id,
+      seedPosition: p.seed_position ?? p.seedPosition ?? p.seed ?? 0,
+      playerName: p.player_name || p.playerName || p.Registration?.playerName || p.Registration?.player_name || findPlayerName(p.player_id || p.playerId || p.id),
     })).sort((a, b) => a.seedPosition - b.seedPosition);
   };
 
   const findPlayerName = (playerId) => {
-    const reg = registrations.find((r) => (r.playerId || r.id) === playerId);
-    return reg ? (reg.playerName || reg.player_name) : `Player ${playerId}`;
+    const reg = registrations.find((r) => (r.player_id || r.playerId || r.id) === playerId);
+    return reg ? (reg.player_name || reg.playerName) : `Player ${playerId}`;
   };
 
   const handleCreatePool = async () => {
@@ -216,8 +216,8 @@ export default function PoolManager({ tournamentId, status, onPoolsChanged }) {
           <div className="pool-players">
             {unassigned.map((r) => {
               const player = {
-                playerId: r.playerId || r.id,
-                playerName: r.playerName || r.player_name,
+                playerId: r.player_id || r.playerId || r.id,
+                playerName: r.player_name || r.playerName,
                 seedPosition: 0,
               };
               return (
@@ -228,8 +228,8 @@ export default function PoolManager({ tournamentId, status, onPoolsChanged }) {
                   onDragStart={(e) => handleDragStart(e, player, 'unassigned')}
                   onDragEnd={handleDragEnd}
                 >
-                  <span className="player-name">{r.playerName}</span>
-                  {r.isLateRegistration && <span className="late-badge">Late</span>}
+                  <span className="player-name">{player.playerName}</span>
+                  {(r.is_late || r.isLateRegistration) ? <span className="late-badge">Late</span> : null}
                 </div>
               );
             })}

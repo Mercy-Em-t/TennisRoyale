@@ -21,15 +21,16 @@ import ExportButton from '../components/ExportButton';
 const LIFECYCLE_ACTIONS = {
   draft: [{ label: 'Open Registration', action: openRegistration }],
   registration_open: [{ label: 'Close Registration', action: closeRegistration }],
-  registration_closed: [
+  registration_closed: [],
+  in_progress: [
     { label: 'Open Late Registration', action: openLateRegistration },
+    { label: 'Close Tournament', action: closeTournament },
   ],
-  late_registration_open: [
+  in_progress_late_open: [
     { label: 'Close Late Registration', action: closeLateRegistration },
+    { label: 'Close Tournament', action: closeTournament },
   ],
-  late_registration_closed: [],
-  in_progress: [{ label: 'Close Tournament', action: closeTournament }],
-  closed: [{ label: 'Archive Tournament', action: archiveTournament }],
+  completed: [{ label: 'Archive Tournament', action: archiveTournament }],
 };
 
 export default function TournamentDetail() {
@@ -92,16 +93,20 @@ export default function TournamentDetail() {
   if (!tournament && !error) return <p>Loading tournament…</p>;
   if (error && !tournament) return <p className="error">{error}</p>;
 
-  const status = tournament.status;
-  const actions = LIFECYCLE_ACTIONS[status] || [];
-  const showRegistrationForm = status === 'registration_open' || status === 'late_registration_open';
+  // Derive effective status considering late_registration_open flag
+  const rawStatus = tournament.status;
+  const isLateOpen = tournament.late_registration_open === 1;
+  const effectiveStatus = (rawStatus === 'in_progress' && isLateOpen) ? 'in_progress_late_open' : rawStatus;
+
+  const actions = LIFECYCLE_ACTIONS[effectiveStatus] || LIFECYCLE_ACTIONS[rawStatus] || [];
+  const showRegistrationForm = rawStatus === 'registration_open' || (rawStatus === 'in_progress' && isLateOpen);
   const showPoolManager = [
-    'registration_closed', 'late_registration_open', 'late_registration_closed', 'in_progress',
-  ].includes(status);
-  const showMatches = ['in_progress', 'closed', 'archived'].includes(status);
-  const showBracket = ['in_progress', 'closed', 'archived'].includes(status);
-  const canPublishPools = ['registration_closed', 'late_registration_closed'].includes(status);
-  const canGenerateMatches = ['registration_closed', 'late_registration_closed'].includes(status);
+    'registration_closed', 'in_progress',
+  ].includes(rawStatus);
+  const showMatches = ['in_progress', 'completed'].includes(rawStatus);
+  const showBracket = ['in_progress', 'completed'].includes(rawStatus);
+  const canPublishPools = rawStatus === 'registration_closed' && tournament.pools_published !== 1;
+  const canGenerateMatches = rawStatus === 'registration_closed' && tournament.pools_published === 1;
 
   return (
     <div className="tournament-detail">
@@ -109,7 +114,7 @@ export default function TournamentDetail() {
 
       <div className="tournament-header">
         <h2>{tournament.name}</h2>
-        <span className={`status-badge status-${status}`}>{status.replace(/_/g, ' ')}</span>
+        <span className={`status-badge status-${effectiveStatus}`}>{effectiveStatus.replace(/_/g, ' ')}</span>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -151,7 +156,7 @@ export default function TournamentDetail() {
         <section className="section">
           <PoolManager
             tournamentId={id}
-            status={status}
+            status={effectiveStatus}
             onPoolsChanged={fetchTournament}
           />
         </section>
@@ -159,13 +164,13 @@ export default function TournamentDetail() {
 
       {showMatches && (
         <section className="section">
-          <MatchList tournamentId={id} status={status} />
+          <MatchList tournamentId={id} status={effectiveStatus} />
         </section>
       )}
 
       {showBracket && (
         <section className="section">
-          <BracketView tournamentId={id} status={status} />
+          <BracketView tournamentId={id} status={effectiveStatus} />
         </section>
       )}
     </div>
