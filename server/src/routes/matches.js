@@ -44,7 +44,6 @@ function createMatchRoutes(db) {
     res.status(201).json(match);
   });
 
-  // Update match score
   // Update match score (host or referee)
   router.put('/:matchId', requireRole('host', 'referee'), (req, res) => {
     const match = db.prepare('SELECT * FROM matches WHERE id = ? AND tournament_id = ?')

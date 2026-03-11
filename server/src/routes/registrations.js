@@ -66,7 +66,6 @@ function createRegistrationRoutes(db) {
     res.status(201).json(registration);
   });
 
-  // Remove registration
   // Remove registration (host only)
   router.delete('/:regId', requireRole('host'), (req, res) => {
     const reg = db.prepare('SELECT * FROM registrations WHERE id = ? AND tournament_id = ?')

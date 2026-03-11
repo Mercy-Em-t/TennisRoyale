@@ -2,7 +2,7 @@
   "name": "tennis-royale-client",
   "version": "1.0.0",
   "type": "module",
-  "description": "TennisRoyale tournament host dashboard",
+  "description": "TennisRoyale tournament management system with role-based access",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -53,7 +53,7 @@ export default function TournamentList() {
         <div className="header-content">
           <div>
             <h1 className="app-title">🎾 TennisRoyale</h1>
-            <p className="app-subtitle">Tournament Host Dashboard</p>
+            <p className="app-subtitle">Tournament Management System</p>
           </div>
           {user && (
             <div className="header-user">
