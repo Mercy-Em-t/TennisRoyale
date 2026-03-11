@@ -187,10 +187,6 @@ function createPoolRoutes(db) {
           `).run(matchId, tournamentId, assignment.poolId, assignment.playerId, ep.player_id);
           newMatches.push(matchId);
         }
-
-        // Mark registration as no longer late-pending
-        db.prepare('UPDATE registrations SET is_late = 0 WHERE tournament_id = ? AND player_id = ?')
-          .run(tournamentId, assignment.playerId);
       }
       return newMatches;
     });

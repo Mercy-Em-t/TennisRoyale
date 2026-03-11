@@ -141,7 +141,7 @@ export default function PoolManager({ tournamentId, status, onPoolsChanged }) {
     // Moving from unassigned or another pool
     if (sourcePoolId === 'unassigned') {
       // If late registration, use append endpoint
-      if (status === 'late_registration_open' || status === 'late_registration_closed') {
+      if (status === 'in_progress_late_open') {
         try {
           await appendLateRegistrations(tournamentId, [
             { playerId: player.playerId, poolId: targetPoolId, seedPosition: insertIndex != null ? insertIndex + 1 : 999 },
