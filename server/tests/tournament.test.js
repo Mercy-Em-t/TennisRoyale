@@ -398,4 +398,170 @@ describe('Tournament Management System', () => {
       expect(found).toBeUndefined();
     });
   });
+
+  describe('Detailed Tournament Creation', () => {
+    let detailedTournamentId;
+
+    test('should create a tournament with detailed fields', async () => {
+      const res = await request(app)
+        .post('/api/tournaments')
+        .send({
+          name: 'Grand Slam Open',
+          date: '2026-08-15',
+          location: 'Centre Court, London',
+          max_participants: 32,
+          fee: 50.00,
+          poster_url: 'https://example.com/poster.jpg',
+          certificate_enabled: true,
+        });
+      expect(res.status).toBe(201);
+      expect(res.body.name).toBe('Grand Slam Open');
+      expect(res.body.date).toBe('2026-08-15');
+      expect(res.body.location).toBe('Centre Court, London');
+      expect(res.body.max_participants).toBe(32);
+      expect(res.body.fee).toBe(50);
+      expect(res.body.poster_url).toBe('https://example.com/poster.jpg');
+      expect(res.body.certificate_enabled).toBe(1);
+      detailedTournamentId = res.body.id;
+    });
+
+    test('should update tournament details', async () => {
+      const res = await request(app)
+        .patch(`/api/tournaments/${detailedTournamentId}`)
+        .send({ name: 'Grand Slam Open 2026', fee: 75 });
+      expect(res.status).toBe(200);
+      expect(res.body.name).toBe('Grand Slam Open 2026');
+      expect(res.body.fee).toBe(75);
+      expect(res.body.location).toBe('Centre Court, London');
+    });
+
+    test('should add a referee', async () => {
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/staff`)
+        .send({ name: 'John Umpire', role: 'referee', email: 'john@ref.com' });
+      expect(res.status).toBe(201);
+      expect(res.body.role).toBe('referee');
+      expect(res.body.name).toBe('John Umpire');
+    });
+
+    test('should add a court marshal', async () => {
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/staff`)
+        .send({ name: 'Jane Marshal', role: 'court_marshal' });
+      expect(res.status).toBe(201);
+      expect(res.body.role).toBe('court_marshal');
+    });
+
+    test('should reject invalid staff role', async () => {
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/staff`)
+        .send({ name: 'Bad Role', role: 'coach' });
+      expect(res.status).toBe(400);
+    });
+
+    test('should list staff', async () => {
+      const res = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/staff`);
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(2);
+    });
+
+    test('should delete a staff member', async () => {
+      const staff = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/staff`);
+      const staffId = staff.body[0].id;
+      const res = await request(app)
+        .delete(`/api/tournaments/${detailedTournamentId}/staff/${staffId}`);
+      expect(res.status).toBe(200);
+      const after = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/staff`);
+      expect(after.body.length).toBe(1);
+    });
+
+    test('should add a review', async () => {
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/reviews`)
+        .send({ author: 'Fan123', comment: 'Great tournament!', rating: 5 });
+      expect(res.status).toBe(201);
+      expect(res.body.author).toBe('Fan123');
+      expect(res.body.rating).toBe(5);
+    });
+
+    test('should reject review without author', async () => {
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/reviews`)
+        .send({ comment: 'No author' });
+      expect(res.status).toBe(400);
+    });
+
+    test('should list reviews', async () => {
+      const res = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/reviews`);
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(1);
+      expect(res.body[0].comment).toBe('Great tournament!');
+    });
+
+    test('should send a broadcast message', async () => {
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/messages`)
+        .send({ subject: 'Welcome!', body: 'Welcome to the tournament.', isBroadcast: true });
+      expect(res.status).toBe(201);
+      expect(res.body.is_broadcast).toBe(1);
+      expect(res.body.recipient_player_id).toBeNull();
+    });
+
+    test('should reject message without subject', async () => {
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/messages`)
+        .send({ body: 'No subject', isBroadcast: true });
+      expect(res.status).toBe(400);
+    });
+
+    test('should send a participant message', async () => {
+      // Register a player first
+      await request(app).patch(`/api/tournaments/${detailedTournamentId}/open-registration`);
+      const reg = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/registrations`)
+        .send({ playerName: 'TestPlayer', playerEmail: 'testplayer@test.com' });
+      const playerId = reg.body.player_id;
+
+      const res = await request(app)
+        .post(`/api/tournaments/${detailedTournamentId}/messages`)
+        .send({ subject: 'Your Schedule', body: 'You play at 10am.', recipientPlayerId: playerId });
+      expect(res.status).toBe(201);
+      expect(res.body.is_broadcast).toBe(0);
+      expect(res.body.recipient_player_id).toBe(playerId);
+    });
+
+    test('should list messages', async () => {
+      const res = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/messages`);
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(2);
+    });
+
+    test('should export JSON with new fields', async () => {
+      const res = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/export`);
+      expect(res.status).toBe(200);
+      expect(res.body.staff).toBeTruthy();
+      expect(res.body.reviews).toBeTruthy();
+      expect(res.body.messages).toBeTruthy();
+    });
+
+    test('should export as PDF', async () => {
+      const res = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/export/pdf`);
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('application/pdf');
+    });
+
+    test('should export as Excel', async () => {
+      const res = await request(app)
+        .get(`/api/tournaments/${detailedTournamentId}/export/excel`);
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    });
+  });
 });

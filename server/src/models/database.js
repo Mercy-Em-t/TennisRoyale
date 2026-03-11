@@ -22,6 +22,12 @@ function initializeDb(database) {
     CREATE TABLE IF NOT EXISTS tournaments (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      date TEXT,
+      location TEXT,
+      max_participants INTEGER,
+      fee REAL DEFAULT 0,
+      poster_url TEXT,
+      certificate_enabled INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'draft',
       late_registration_open INTEGER NOT NULL DEFAULT 0,
       pools_published INTEGER NOT NULL DEFAULT 0,
@@ -85,6 +91,38 @@ function initializeDb(database) {
       FOREIGN KEY (player1_id) REFERENCES players(id),
       FOREIGN KEY (player2_id) REFERENCES players(id),
       FOREIGN KEY (winner_id) REFERENCES players(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tournament_staff (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      email TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tournament_reviews (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      author TEXT NOT NULL,
+      comment TEXT NOT NULL,
+      rating INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tournament_messages (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      recipient_player_id TEXT,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      is_broadcast INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+      FOREIGN KEY (recipient_player_id) REFERENCES players(id)
     );
   `);
 }
