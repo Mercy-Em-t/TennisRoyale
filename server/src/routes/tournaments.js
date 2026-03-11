@@ -156,6 +156,8 @@ function createTournamentRoutes(db) {
     const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
     if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
 
+    db.prepare('DELETE FROM host_withdrawals WHERE tournament_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM payments WHERE tournament_id = ?').run(req.params.id);
     db.prepare('DELETE FROM tournament_messages WHERE tournament_id = ?').run(req.params.id);
     db.prepare('DELETE FROM tournament_staff WHERE tournament_id = ?').run(req.params.id);
     db.prepare('DELETE FROM matches WHERE tournament_id = ?').run(req.params.id);
