@@ -8,7 +8,7 @@ import PlayerDashboard from './pages/PlayerDashboard';
 import RefereeDashboard from './pages/RefereeDashboard';
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, activeRole } = useAuth();
 
   if (loading) {
     return <div className="app"><div className="loading">Loading...</div></div>;
@@ -22,19 +22,22 @@ function AppRoutes() {
     );
   }
 
+  // Player is the base role. When activeRole is 'player', show PlayerDashboard.
+  // For host/referee, show their management dashboard when activeRole matches.
+  // Host/referee can switch to player mode (activeRole='player') and back.
   return (
     <div className="app">
       <Routes>
-        {user.role === 'host' && (
+        {activeRole === 'player' && (
+          <Route path="/" element={<PlayerDashboard />} />
+        )}
+        {activeRole === 'host' && (
           <>
             <Route path="/" element={<TournamentList />} />
             <Route path="/tournaments/:id" element={<HostDashboard />} />
           </>
         )}
-        {user.role === 'player' && (
-          <Route path="/" element={<PlayerDashboard />} />
-        )}
-        {user.role === 'referee' && (
+        {activeRole === 'referee' && (
           <Route path="/" element={<RefereeDashboard />} />
         )}
         <Route path="*" element={<Navigate to="/" replace />} />

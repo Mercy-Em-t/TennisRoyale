@@ -13,7 +13,7 @@ const statusLabels = {
 };
 
 export default function TournamentList() {
-  const { user, logout } = useAuth();
+  const { user, logout, switchToPlayer } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', date: '', location: '', max_participants: 32 });
@@ -58,6 +58,7 @@ export default function TournamentList() {
           {user && (
             <div className="header-user">
               <span className="user-badge">🏟️ {user.name}</span>
+              <button className="btn-sm btn-switch" onClick={switchToPlayer}>🎾 Player Mode</button>
               <button className="btn-back" onClick={logout}>Logout</button>
             </div>
           )}

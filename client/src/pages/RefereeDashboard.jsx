@@ -12,7 +12,7 @@ const statusLabels = {
 };
 
 export default function RefereeDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, switchToPlayer } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -67,7 +67,10 @@ export default function RefereeDashboard() {
       <header className="dashboard-header">
         <div className="dashboard-header-top">
           <span className="user-badge">📋 {user.name}</span>
-          <button className="btn-back" onClick={logout}>Logout</button>
+          <div className="header-actions">
+            <button className="btn-sm btn-switch" onClick={switchToPlayer}>🎾 Player Mode</button>
+            <button className="btn-back" onClick={logout}>Logout</button>
+          </div>
         </div>
         <div className="dashboard-header-info">
           <h1 className="dashboard-title">Referee Dashboard</h1>
