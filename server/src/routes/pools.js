@@ -41,10 +41,9 @@ function createPoolRoutes(db) {
     if (!player_id) return res.status(400).json({ error: 'Player ID is required' });
 
     // Remove from any existing pool in this tournament
-    const pools = db.prepare('SELECT id FROM pools WHERE tournament_id = ?').all(req.params.tournamentId);
-    for (const pool of pools) {
-      db.prepare('DELETE FROM pool_players WHERE pool_id = ? AND player_id = ?').run(pool.id, player_id);
-    }
+    db.prepare(
+      'DELETE FROM pool_players WHERE player_id = ? AND pool_id IN (SELECT id FROM pools WHERE tournament_id = ?)'
+    ).run(player_id, req.params.tournamentId);
 
     const id = uuidv4();
     db.prepare('INSERT INTO pool_players (id, pool_id, player_id, seed_position) VALUES (?, ?, ?, ?)')

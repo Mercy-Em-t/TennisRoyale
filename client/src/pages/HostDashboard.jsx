@@ -70,6 +70,15 @@ export default function HostDashboard() {
     }
   }
 
+  async function handleToggleLateReg() {
+    try {
+      await updateTournament(id, { late_registration_open: tournament.late_registration_open ? 0 : 1 });
+      loadTournament();
+    } catch {
+      /* empty */
+    }
+  }
+
   if (loading) return <div className="page"><div className="loading">Loading dashboard...</div></div>;
   if (error) return <div className="page"><div className="error-state">Error: {error}</div></div>;
   if (!tournament) return <div className="page"><div className="error-state">Tournament not found</div></div>;
@@ -113,6 +122,7 @@ export default function HostDashboard() {
             <StatusActions
               tournament={tournament}
               onStatusChange={handleStatusChange}
+              onToggleLateReg={handleToggleLateReg}
               onDelete={handleDelete}
             />
           </div>

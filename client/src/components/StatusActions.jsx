@@ -8,7 +8,7 @@ const STATUS_FLOW = {
   completed: { next: 'archived', label: 'Archive Tournament', icon: '📦' },
 };
 
-export default function StatusActions({ tournament, onStatusChange, onDelete }) {
+export default function StatusActions({ tournament, onStatusChange, onToggleLateReg, onDelete }) {
   const flow = STATUS_FLOW[tournament.status];
 
   return (
@@ -38,9 +38,7 @@ export default function StatusActions({ tournament, onStatusChange, onDelete }) 
         {['registration_closed', 'in_progress'].includes(tournament.status) && (
           <button
             className="action-card"
-            onClick={() =>
-              onStatusChange(tournament.late_registration_open ? 'registration_closed' : 'in_progress')
-            }
+            onClick={onToggleLateReg}
           >
             <span className="action-icon">{tournament.late_registration_open ? '🚫' : '📋'}</span>
             <span className="action-label">

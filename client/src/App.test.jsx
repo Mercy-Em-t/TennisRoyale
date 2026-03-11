@@ -66,9 +66,10 @@ describe('StatusActions', () => {
   it('shows appropriate action for draft tournament', () => {
     const tournament = { status: 'draft' };
     const onStatusChange = vi.fn();
+    const onToggleLateReg = vi.fn();
     const onDelete = vi.fn();
 
-    render(<StatusActions tournament={tournament} onStatusChange={onStatusChange} onDelete={onDelete} />);
+    render(<StatusActions tournament={tournament} onStatusChange={onStatusChange} onToggleLateReg={onToggleLateReg} onDelete={onDelete} />);
 
     expect(screen.getByText('Open Registration')).toBeInTheDocument();
     expect(screen.getByText('Delete Tournament')).toBeInTheDocument();
@@ -77,9 +78,10 @@ describe('StatusActions', () => {
   it('shows appropriate action for in-progress tournament', () => {
     const tournament = { status: 'in_progress', late_registration_open: 0 };
     const onStatusChange = vi.fn();
+    const onToggleLateReg = vi.fn();
     const onDelete = vi.fn();
 
-    render(<StatusActions tournament={tournament} onStatusChange={onStatusChange} onDelete={onDelete} />);
+    render(<StatusActions tournament={tournament} onStatusChange={onStatusChange} onToggleLateReg={onToggleLateReg} onDelete={onDelete} />);
 
     expect(screen.getByText('Complete Tournament')).toBeInTheDocument();
     expect(screen.getByText('Open Late Reg')).toBeInTheDocument();
@@ -88,12 +90,26 @@ describe('StatusActions', () => {
   it('calls onStatusChange when action is clicked', async () => {
     const tournament = { status: 'draft' };
     const onStatusChange = vi.fn();
+    const onToggleLateReg = vi.fn();
     const onDelete = vi.fn();
     const { getByText } = render(
-      <StatusActions tournament={tournament} onStatusChange={onStatusChange} onDelete={onDelete} />
+      <StatusActions tournament={tournament} onStatusChange={onStatusChange} onToggleLateReg={onToggleLateReg} onDelete={onDelete} />
     );
 
     getByText('Open Registration').click();
     expect(onStatusChange).toHaveBeenCalledWith('registration_open');
+  });
+
+  it('calls onToggleLateReg when late reg button is clicked', async () => {
+    const tournament = { status: 'in_progress', late_registration_open: 0 };
+    const onStatusChange = vi.fn();
+    const onToggleLateReg = vi.fn();
+    const onDelete = vi.fn();
+    const { getByText } = render(
+      <StatusActions tournament={tournament} onStatusChange={onStatusChange} onToggleLateReg={onToggleLateReg} onDelete={onDelete} />
+    );
+
+    getByText('Open Late Reg').click();
+    expect(onToggleLateReg).toHaveBeenCalled();
   });
 });
