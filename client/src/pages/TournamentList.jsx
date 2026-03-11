@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getTournaments, createTournament } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const statusLabels = {
   draft: 'Draft',
@@ -12,6 +13,7 @@ const statusLabels = {
 };
 
 export default function TournamentList() {
+  const { user, logout } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', date: '', location: '', max_participants: 32 });
@@ -49,8 +51,16 @@ export default function TournamentList() {
     <div className="page">
       <header className="app-header">
         <div className="header-content">
-          <h1 className="app-title">🎾 TennisRoyale</h1>
-          <p className="app-subtitle">Tournament Host Dashboard</p>
+          <div>
+            <h1 className="app-title">🎾 TennisRoyale</h1>
+            <p className="app-subtitle">Tournament Host Dashboard</p>
+          </div>
+          {user && (
+            <div className="header-user">
+              <span className="user-badge">🏟️ {user.name}</span>
+              <button className="btn-back" onClick={logout}>Logout</button>
+            </div>
+          )}
         </div>
       </header>
 

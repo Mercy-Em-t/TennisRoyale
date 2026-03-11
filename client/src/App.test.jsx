@@ -14,12 +14,21 @@ beforeEach(() => {
       json: () => Promise.resolve([]),
     })
   );
+  // Clear localStorage
+  localStorage.clear();
 });
 
 describe('App', () => {
   it('renders the app component', () => {
     render(<App />);
-    // App uses BrowserRouter internally, verify it renders
+    // App uses AuthProvider + BrowserRouter, should show login when no user
+  });
+
+  it('shows login page when not authenticated', async () => {
+    global.fetch = vi.fn(() => Promise.resolve({ ok: false, status: 401 }));
+    render(<App />);
+    // Without a token, should render login page
+    expect(await screen.findByText('Tournament Management System')).toBeInTheDocument();
   });
 });
 

@@ -1,8 +1,13 @@
 const API_BASE = '/api';
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders(), ...options.headers },
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
@@ -12,6 +17,11 @@ async function apiFetch(path, options = {}) {
   }
   return res.json();
 }
+
+// Auth API
+export const registerUser = (data) => apiFetch('/auth/register', { method: 'POST', body: data });
+export const loginUser = (data) => apiFetch('/auth/login', { method: 'POST', body: data });
+export const getCurrentUser = () => apiFetch('/auth/me');
 
 // Tournament API
 export const getTournaments = () => apiFetch('/tournaments');
