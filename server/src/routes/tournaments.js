@@ -1,16 +1,17 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 function createTournamentRoutes(db) {
   const router = express.Router();
 
-  // List all tournaments
+  // List all tournaments (public)
   router.get('/', (req, res) => {
     const tournaments = db.prepare('SELECT * FROM tournaments ORDER BY created_at DESC').all();
     res.json(tournaments);
   });
 
-  // Get single tournament with stats
+  // Get single tournament with stats (public)
   router.get('/:id', (req, res) => {
     const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
     if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
@@ -47,22 +48,22 @@ function createTournamentRoutes(db) {
     });
   });
 
-  // Create tournament
-  router.post('/', (req, res) => {
+  // Create tournament (host only)
+  router.post('/', requireRole('host'), (req, res) => {
     const { name, date, location, max_participants, fee, poster_url } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
 
     const id = uuidv4();
     db.prepare(
-      'INSERT INTO tournaments (id, name, date, location, max_participants, fee, poster_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run(id, name, date || null, location || null, max_participants || 32, fee || 0, poster_url || null);
+      'INSERT INTO tournaments (id, name, date, location, max_participants, fee, poster_url, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(id, name, date || null, location || null, max_participants || 32, fee || 0, poster_url || null, req.user.id);
 
     const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
     res.status(201).json(tournament);
   });
 
-  // Update tournament
-  router.put('/:id', (req, res) => {
+  // Update tournament (host only)
+  router.put('/:id', requireRole('host'), (req, res) => {
     const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
     if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
 
@@ -91,8 +92,8 @@ function createTournamentRoutes(db) {
     res.json(updated);
   });
 
-  // Delete tournament
-  router.delete('/:id', (req, res) => {
+  // Delete tournament (host only)
+  router.delete('/:id', requireRole('host'), (req, res) => {
     const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
     if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
 

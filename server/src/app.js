@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { getDb, initializeDb } = require('./models/database');
+const { authMiddleware } = require('./middleware/auth');
+const createAuthRoutes = require('./routes/auth');
 const createTournamentRoutes = require('./routes/tournaments');
 const createRegistrationRoutes = require('./routes/registrations');
 const createMatchRoutes = require('./routes/matches');
@@ -24,6 +26,12 @@ function createApp(dbPath) {
     legacyHeaders: false,
   });
   app.use('/api', limiter);
+
+  // Auth middleware - attaches req.user for all API routes
+  app.use('/api', authMiddleware(db));
+
+  // Auth Routes (public)
+  app.use('/api/auth', createAuthRoutes(db));
 
   // API Routes
   app.use('/api/tournaments', createTournamentRoutes(db));

@@ -1,10 +1,11 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { requireRole } = require('../middleware/auth');
 
 function createMatchRoutes(db) {
   const router = express.Router({ mergeParams: true });
 
-  // List matches for a tournament
+  // List matches for a tournament (public)
   router.get('/', (req, res) => {
     const matches = db.prepare(`
       SELECT m.*,
@@ -20,8 +21,8 @@ function createMatchRoutes(db) {
     res.json(matches);
   });
 
-  // Create a match
-  router.post('/', (req, res) => {
+  // Create a match (host only)
+  router.post('/', requireRole('host'), (req, res) => {
     const { player1_id, player2_id, pool_id, round, bracket_stage, scheduled_at } = req.body;
     if (!player1_id || !player2_id) {
       return res.status(400).json({ error: 'Both players are required' });
@@ -44,7 +45,8 @@ function createMatchRoutes(db) {
   });
 
   // Update match score
-  router.put('/:matchId', (req, res) => {
+  // Update match score (host or referee)
+  router.put('/:matchId', requireRole('host', 'referee'), (req, res) => {
     const match = db.prepare('SELECT * FROM matches WHERE id = ? AND tournament_id = ?')
       .get(req.params.matchId, req.params.tournamentId);
     if (!match) return res.status(404).json({ error: 'Match not found' });
@@ -88,8 +90,8 @@ function createMatchRoutes(db) {
     res.json(updated);
   });
 
-  // Delete a match
-  router.delete('/:matchId', (req, res) => {
+  // Delete a match (host only)
+  router.delete('/:matchId', requireRole('host'), (req, res) => {
     const match = db.prepare('SELECT * FROM matches WHERE id = ? AND tournament_id = ?')
       .get(req.params.matchId, req.params.tournamentId);
     if (!match) return res.status(404).json({ error: 'Match not found' });

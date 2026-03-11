@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { requireRole } = require('../middleware/auth');
 
 function createPoolRoutes(db) {
   const router = express.Router({ mergeParams: true });
@@ -22,8 +23,8 @@ function createPoolRoutes(db) {
     res.json(poolsWithPlayers);
   });
 
-  // Create pool
-  router.post('/', (req, res) => {
+  // Create pool (host only)
+  router.post('/', requireRole('host'), (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Pool name is required' });
 
@@ -35,8 +36,8 @@ function createPoolRoutes(db) {
     res.status(201).json({ ...pool, players: [] });
   });
 
-  // Add player to pool
-  router.post('/:poolId/players', (req, res) => {
+  // Add player to pool (host only)
+  router.post('/:poolId/players', requireRole('host'), (req, res) => {
     const { player_id, seed_position } = req.body;
     if (!player_id) return res.status(400).json({ error: 'Player ID is required' });
 
@@ -52,15 +53,15 @@ function createPoolRoutes(db) {
     res.status(201).json({ message: 'Player added to pool' });
   });
 
-  // Remove player from pool
-  router.delete('/:poolId/players/:playerId', (req, res) => {
+  // Remove player from pool (host only)
+  router.delete('/:poolId/players/:playerId', requireRole('host'), (req, res) => {
     db.prepare('DELETE FROM pool_players WHERE pool_id = ? AND player_id = ?')
       .run(req.params.poolId, req.params.playerId);
     res.json({ message: 'Player removed from pool' });
   });
 
-  // Delete pool
-  router.delete('/:poolId', (req, res) => {
+  // Delete pool (host only)
+  router.delete('/:poolId', requireRole('host'), (req, res) => {
     db.prepare('DELETE FROM pool_players WHERE pool_id = ?').run(req.params.poolId);
     db.prepare('DELETE FROM pools WHERE id = ?').run(req.params.poolId);
     res.json({ message: 'Pool deleted' });

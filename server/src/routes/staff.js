@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { requireRole } = require('../middleware/auth');
 
 function createStaffRoutes(db) {
   const router = express.Router({ mergeParams: true });
@@ -12,8 +13,8 @@ function createStaffRoutes(db) {
     res.json(staff);
   });
 
-  // Add staff member
-  router.post('/', (req, res) => {
+  // Add staff member (host only)
+  router.post('/', requireRole('host'), (req, res) => {
     const { name, role, email } = req.body;
     if (!name || !role) return res.status(400).json({ error: 'Name and role are required' });
 
@@ -26,8 +27,8 @@ function createStaffRoutes(db) {
     res.status(201).json(staff);
   });
 
-  // Remove staff member
-  router.delete('/:staffId', (req, res) => {
+  // Remove staff member (host only)
+  router.delete('/:staffId', requireRole('host'), (req, res) => {
     const staff = db.prepare(
       'SELECT * FROM tournament_staff WHERE id = ? AND tournament_id = ?'
     ).get(req.params.staffId, req.params.tournamentId);

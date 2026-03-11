@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 function createRegistrationRoutes(db) {
   const router = express.Router({ mergeParams: true });
@@ -66,7 +67,8 @@ function createRegistrationRoutes(db) {
   });
 
   // Remove registration
-  router.delete('/:regId', (req, res) => {
+  // Remove registration (host only)
+  router.delete('/:regId', requireRole('host'), (req, res) => {
     const reg = db.prepare('SELECT * FROM registrations WHERE id = ? AND tournament_id = ?')
       .get(req.params.regId, req.params.tournamentId);
     if (!reg) return res.status(404).json({ error: 'Registration not found' });

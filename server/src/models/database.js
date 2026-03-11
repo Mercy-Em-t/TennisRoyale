@@ -18,6 +18,15 @@ function getDb(customPath) {
 
 function initializeDb(db) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'player',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS tournaments (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -28,8 +37,10 @@ function initializeDb(db) {
       poster_url TEXT,
       status TEXT DEFAULT 'draft',
       late_registration_open INTEGER DEFAULT 0,
+      created_by TEXT,
       created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (created_by) REFERENCES users(id)
     );
 
     CREATE TABLE IF NOT EXISTS players (

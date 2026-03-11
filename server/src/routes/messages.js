@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { requireRole } = require('../middleware/auth');
 
 function createMessageRoutes(db) {
   const router = express.Router({ mergeParams: true });
@@ -12,8 +13,8 @@ function createMessageRoutes(db) {
     res.json(messages);
   });
 
-  // Send a message
-  router.post('/', (req, res) => {
+  // Send a message (host only)
+  router.post('/', requireRole('host'), (req, res) => {
     const { subject, body, recipient_type } = req.body;
     if (!subject || !body) return res.status(400).json({ error: 'Subject and body are required' });
 
