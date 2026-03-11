@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTournament, updateTournament, deleteTournament } from '../utils/api';
+import { getTournament, updateTournament, deleteTournament, getEarnings, requestWithdrawal } from '../utils/api';
 import QuickStats from '../components/QuickStats';
 import StatusActions from '../components/StatusActions';
 import RegistrationManager from '../components/RegistrationManager';
@@ -34,12 +34,21 @@ export default function HostDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [earnings, setEarnings] = useState(null);
+  const [withdrawMsg, setWithdrawMsg] = useState(null);
 
   const loadTournament = useCallback(async () => {
     try {
       const data = await getTournament(id);
       setTournament(data);
       setError(null);
+      // Load earnings if tournament has a fee
+      try {
+        const earningsData = await getEarnings(id);
+        setEarnings(earningsData);
+      } catch {
+        /* earnings may fail for non-owners, that's ok */
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -76,6 +85,18 @@ export default function HostDashboard() {
       loadTournament();
     } catch {
       /* empty */
+    }
+  }
+
+  async function handleWithdraw() {
+    if (!earnings || earnings.available <= 0) return;
+    setWithdrawMsg(null);
+    try {
+      await requestWithdrawal(id, { amount: earnings.available });
+      setWithdrawMsg({ type: 'success', text: `Withdrew KSh ${earnings.available.toLocaleString()} successfully!` });
+      loadTournament();
+    } catch (err) {
+      setWithdrawMsg({ type: 'error', text: err.message });
     }
   }
 
@@ -125,6 +146,44 @@ export default function HostDashboard() {
               onToggleLateReg={handleToggleLateReg}
               onDelete={handleDelete}
             />
+            {earnings && earnings.payment_count > 0 && (
+              <div className="earnings-panel">
+                <h3 className="earnings-title">💰 Payment & Earnings</h3>
+                <div className="earnings-grid">
+                  <div className="earnings-stat collected">
+                    <span className="earnings-stat-value">KSh {earnings.total_collected.toLocaleString()}</span>
+                    <span className="earnings-stat-label">Total Collected</span>
+                  </div>
+                  <div className="earnings-stat platform">
+                    <span className="earnings-stat-value">KSh {earnings.platform_total.toLocaleString()}</span>
+                    <span className="earnings-stat-label">Platform Fee (10%)</span>
+                  </div>
+                  <div className="earnings-stat available">
+                    <span className="earnings-stat-value">KSh {earnings.available.toLocaleString()}</span>
+                    <span className="earnings-stat-label">Available to Withdraw</span>
+                  </div>
+                  <div className="earnings-stat withdrawn">
+                    <span className="earnings-stat-value">KSh {earnings.withdrawn.toLocaleString()}</span>
+                    <span className="earnings-stat-label">Withdrawn</span>
+                  </div>
+                </div>
+                {!earnings.can_withdraw && (
+                  <div className="earnings-escrow-notice">
+                    🔒 Funds held in escrow until tournament is completed
+                  </div>
+                )}
+                {earnings.can_withdraw && earnings.available > 0 && (
+                  <button className="btn btn-primary withdraw-btn" onClick={handleWithdraw}>
+                    💸 Withdraw KSh {earnings.available.toLocaleString()}
+                  </button>
+                )}
+                {withdrawMsg && (
+                  <div className={`auth-error ${withdrawMsg.type === 'success' ? 'auth-success' : ''}`} style={{ marginTop: '0.5rem' }}>
+                    {withdrawMsg.text}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -16,7 +16,11 @@ export default function TournamentList() {
   const { user, logout, switchToPlayer } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', date: '', location: '', max_participants: 32 });
+  const [form, setForm] = useState({
+    name: '', date: '', location: '', max_participants: 32,
+    fee: 0, service_fee: 0, prize_pool: 0,
+    registration_deadline: '', rules: '', bracket_type: 'single_elimination'
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,7 +43,11 @@ export default function TournamentList() {
     if (!form.name.trim()) return;
     try {
       await createTournament(form);
-      setForm({ name: '', date: '', location: '', max_participants: 32 });
+      setForm({
+        name: '', date: '', location: '', max_participants: 32,
+        fee: 0, service_fee: 0, prize_pool: 0,
+        registration_deadline: '', rules: '', bracket_type: 'single_elimination'
+      });
       setShowForm(false);
       loadTournaments();
     } catch {
@@ -116,7 +124,79 @@ export default function TournamentList() {
                   onChange={(e) => setForm({ ...form, max_participants: parseInt(e.target.value) || 32 })}
                 />
               </div>
+              <div className="form-field">
+                <label htmlFor="fee">Entry Fee (KSh)</label>
+                <input
+                  id="fee"
+                  type="number"
+                  min="0"
+                  placeholder="0 for free"
+                  value={form.fee}
+                  onChange={(e) => setForm({ ...form, fee: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="service_fee">Service Fee (KSh)</label>
+                <input
+                  id="service_fee"
+                  type="number"
+                  min="0"
+                  placeholder="Platform service charge"
+                  value={form.service_fee}
+                  onChange={(e) => setForm({ ...form, service_fee: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="prize_pool">Prize Pool (KSh)</label>
+                <input
+                  id="prize_pool"
+                  type="number"
+                  min="0"
+                  placeholder="0 for no prize"
+                  value={form.prize_pool}
+                  onChange={(e) => setForm({ ...form, prize_pool: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="deadline">Registration Deadline</label>
+                <input
+                  id="deadline"
+                  type="date"
+                  value={form.registration_deadline}
+                  onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="bracket_type">Bracket Type</label>
+                <select
+                  id="bracket_type"
+                  value={form.bracket_type}
+                  onChange={(e) => setForm({ ...form, bracket_type: e.target.value })}
+                >
+                  <option value="single_elimination">Single Elimination</option>
+                  <option value="double_elimination">Double Elimination</option>
+                  <option value="round_robin">Round Robin</option>
+                  <option value="pool_play">Pool Play</option>
+                </select>
+              </div>
+              <div className="form-field full-width">
+                <label htmlFor="rules">Rules</label>
+                <textarea
+                  id="rules"
+                  placeholder="e.g. Best of 3 sets. Tiebreak at 6-6."
+                  value={form.rules}
+                  onChange={(e) => setForm({ ...form, rules: e.target.value })}
+                  rows="3"
+                />
+              </div>
             </div>
+            {form.fee > 0 && (
+              <div className="fee-preview">
+                <span>💰 Player pays: <strong>KSh {(form.fee + form.service_fee).toLocaleString()}</strong></span>
+                <span> · Platform (10%): <strong>KSh {(form.fee * 0.1 + form.service_fee).toLocaleString()}</strong></span>
+                <span> · You receive: <strong>KSh {(form.fee * 0.9).toLocaleString()}</strong></span>
+              </div>
+            )}
             <button type="submit" className="btn btn-primary">Create Tournament</button>
           </form>
         )}
@@ -142,6 +222,9 @@ export default function TournamentList() {
                   {t.date && <span>📅 {new Date(t.date).toLocaleDateString()}</span>}
                   {t.location && <span>📍 {t.location}</span>}
                   <span>👥 Max {t.max_participants}</span>
+                  {t.fee > 0 && <span>💰 KSh {t.fee.toLocaleString()}</span>}
+                  {t.fee === 0 && <span>🆓 Free</span>}
+                  {t.prize_pool > 0 && <span>🏆 KSh {t.prize_pool.toLocaleString()}</span>}
                 </div>
               </Link>
             ))}

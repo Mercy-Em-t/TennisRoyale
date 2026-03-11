@@ -319,9 +319,12 @@ export default function PlayerDashboard() {
                       </span>
                     </div>
                     <div className="tournament-card-details">
+                      {t.host_name && <span>🏟️ {t.host_name}</span>}
                       {t.date && <span>📅 {new Date(t.date).toLocaleDateString()}</span>}
                       {t.location && <span>📍 {t.location}</span>}
                       <span>👥 Max {t.max_participants}</span>
+                      {t.fee > 0 && <span>💰 KSh {t.fee.toLocaleString()}</span>}
+                      {t.fee === 0 && <span>🆓 Free</span>}
                     </div>
                   </div>
                 ))}
@@ -329,32 +332,84 @@ export default function PlayerDashboard() {
             )}
 
             {selectedTournament && (
-              <div className="detail-panel" data-testid="tournament-detail">
+              <div className="detail-panel tournament-page" data-testid="tournament-detail">
                 <h2 className="section-title">{selectedTournament.name}</h2>
-                <div className="detail-info">
-                  <div className="detail-row">
-                    <span>Status:</span>
+
+                {/* Tournament info grid */}
+                <div className="tournament-info-grid">
+                  {selectedTournament.host_name && (
+                    <div className="info-item">
+                      <span className="info-label">🏟️ Host</span>
+                      <span className="info-value">{selectedTournament.host_name}</span>
+                    </div>
+                  )}
+                  {selectedTournament.location && (
+                    <div className="info-item">
+                      <span className="info-label">📍 Location</span>
+                      <span className="info-value">{selectedTournament.location}</span>
+                    </div>
+                  )}
+                  {selectedTournament.date && (
+                    <div className="info-item">
+                      <span className="info-label">📅 Date</span>
+                      <span className="info-value">{new Date(selectedTournament.date).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  <div className="info-item">
+                    <span className="info-label">📊 Status</span>
                     <span className={`status-badge status-${selectedTournament.status}`}>
                       {statusLabels[selectedTournament.status]}
                     </span>
                   </div>
-                  {selectedTournament.date && (
-                    <div className="detail-row">
-                      <span>Date:</span>
-                      <span>📅 {new Date(selectedTournament.date).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                  {selectedTournament.location && (
-                    <div className="detail-row">
-                      <span>Location:</span>
-                      <span>📍 {selectedTournament.location}</span>
-                    </div>
-                  )}
-                  <div className="detail-row">
-                    <span>Registered:</span>
-                    <span>{selectedTournament.stats?.registrations || 0} / {selectedTournament.max_participants}</span>
+                  <div className="info-item">
+                    <span className="info-label">👥 Players</span>
+                    <span className="info-value">{selectedTournament.stats?.registrations || 0} / {selectedTournament.max_participants}</span>
                   </div>
+                  {selectedTournament.bracket_type && (
+                    <div className="info-item">
+                      <span className="info-label">🏆 Format</span>
+                      <span className="info-value">{selectedTournament.bracket_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                    </div>
+                  )}
+                  {selectedTournament.registration_deadline && (
+                    <div className="info-item">
+                      <span className="info-label">⏰ Deadline</span>
+                      <span className="info-value">{new Date(selectedTournament.registration_deadline).toLocaleDateString()}</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Entry fee & payment info */}
+                {(selectedTournament.fee > 0 || selectedTournament.prize_pool > 0) && (
+                  <div className="tournament-payment-info">
+                    {selectedTournament.fee > 0 && (
+                      <div className="payment-card">
+                        <span className="payment-label">💰 Entry Fee</span>
+                        <span className="payment-amount">KSh {selectedTournament.fee.toLocaleString()}</span>
+                        {selectedTournament.service_fee > 0 && (
+                          <span className="payment-service">+ KSh {selectedTournament.service_fee.toLocaleString()} service fee</span>
+                        )}
+                        {selectedTournament.service_fee > 0 && (
+                          <span className="payment-total">Total: KSh {(selectedTournament.fee + selectedTournament.service_fee).toLocaleString()}</span>
+                        )}
+                      </div>
+                    )}
+                    {selectedTournament.prize_pool > 0 && (
+                      <div className="payment-card prize">
+                        <span className="payment-label">🏆 Prize Pool</span>
+                        <span className="payment-amount">KSh {selectedTournament.prize_pool.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Rules */}
+                {selectedTournament.rules && (
+                  <div className="tournament-rules">
+                    <h3 className="subsection-title">📋 Rules</h3>
+                    <p className="rules-text">{selectedTournament.rules}</p>
+                  </div>
+                )}
 
                 {message && (
                   <div className={`auth-error ${message.type === 'success' ? 'auth-success' : ''}`}>
@@ -362,6 +417,7 @@ export default function PlayerDashboard() {
                   </div>
                 )}
 
+                {/* Register Now button */}
                 {isRegistered ? (
                   <div className="registered-badge">✅ You are registered for this tournament</div>
                 ) : (
@@ -369,11 +425,13 @@ export default function PlayerDashboard() {
                   selectedTournament.late_registration_open
                 ) ? (
                   <button
-                    className="btn btn-primary"
+                    className="btn btn-primary register-btn"
                     onClick={() => handleRegister(selectedTournament.id)}
                     disabled={regLoading}
                   >
-                    {regLoading ? 'Registering...' : '🎾 Register for Tournament'}
+                    {regLoading ? 'Registering...' : selectedTournament.fee > 0
+                      ? `🎾 Register Now — KSh ${(selectedTournament.fee + (selectedTournament.service_fee || 0)).toLocaleString()}`
+                      : '🎾 Register Now — Free'}
                   </button>
                 ) : (
                   <div className="info-badge">Registration is currently closed</div>

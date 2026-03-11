@@ -56,3 +56,8 @@ export const removeStaff = (tid, sid) => apiFetch(`/tournaments/${tid}/staff/${s
 // Message API
 export const getMessages = (tid) => apiFetch(`/tournaments/${tid}/messages`);
 export const sendMessage = (tid, data) => apiFetch(`/tournaments/${tid}/messages`, { method: 'POST', body: data });
+
+// Payment API
+export const getPayments = (tid) => apiFetch(`/tournaments/${tid}/payments`);
+export const getEarnings = (tid) => apiFetch(`/tournaments/${tid}/payments/earnings`);
+export const requestWithdrawal = (tid, data) => apiFetch(`/tournaments/${tid}/payments/withdraw`, { method: 'POST', body: data });
