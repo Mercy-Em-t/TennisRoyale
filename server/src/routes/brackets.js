@@ -59,7 +59,7 @@ router.post('/generate', authenticate, (req, res) => {
       LEFT JOIN matches m ON m.pool_id = pp.pool_id AND (m.player1_id = p.id OR m.player2_id = p.id)
       WHERE pp.pool_id = ?
       GROUP BY p.id
-      ORDER BY wins DESC, p.seed ASC NULLS LAST
+      ORDER BY wins DESC, CASE WHEN p.seed IS NULL THEN 999999 ELSE p.seed END ASC
     `).all(pool.id);
 
     // Advance top players_per_pool players (default 2 per pool, configurable)

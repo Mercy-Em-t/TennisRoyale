@@ -130,11 +130,25 @@ router.put('/:poolId/players/reorder', authenticate, (req, res) => {
 
   const updatePosition = db.prepare('UPDATE pool_players SET position = ? WHERE pool_id = ? AND player_id = ?');
   const reorder = db.transaction(() => {
+    // Validate that all provided IDs belong to this pool
+    const poolPlayerIds = new Set(
+      db.prepare('SELECT player_id FROM pool_players WHERE pool_id = ?')
+        .all(pool.id).map(r => r.player_id)
+    );
+    for (const playerId of order) {
+      if (!poolPlayerIds.has(playerId)) {
+        throw Object.assign(new Error(`Player ${playerId} does not belong to this pool`), { status: 400 });
+      }
+    }
     order.forEach((playerId, idx) => {
       updatePosition.run(idx, pool.id, playerId);
     });
   });
-  reorder();
+  try {
+    reorder();
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
 
   res.json(getPoolWithPlayers(db.prepare('SELECT * FROM pools WHERE id = ?').get(pool.id)));
 });

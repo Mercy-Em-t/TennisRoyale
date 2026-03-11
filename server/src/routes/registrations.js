@@ -34,9 +34,9 @@ router.post('/', (req, res) => {
   const { name, email, phone } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
 
-  // Count accepted players and enforce max
+  // Count only accepted players to determine if new registration is late
   const accepted = db.prepare(
-    `SELECT COUNT(*) as count FROM players WHERE tournament_id = ? AND status IN ('accepted', 'late')`
+    `SELECT COUNT(*) as count FROM players WHERE tournament_id = ? AND status = 'accepted'`
   ).get(req.params.id);
 
   const isLate = accepted.count >= tournament.max_players;

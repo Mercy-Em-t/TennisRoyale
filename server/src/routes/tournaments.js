@@ -27,7 +27,7 @@ router.post('/', authenticate, (req, res) => {
     INSERT INTO tournaments (name, description, host_id, max_players)
     VALUES (?, ?, ?, ?)
   `);
-  const result = stmt.run(name, description || null, req.host.id, max_players || 64);
+  const result = stmt.run(name, description || null, req.hostUser.id, max_players || 64);
   const tournament = getTournament(result.lastInsertRowid);
   res.status(201).json(tournament);
 });

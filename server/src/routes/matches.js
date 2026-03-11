@@ -73,7 +73,7 @@ router.patch('/:matchId/score', authenticate, (req, res) => {
     if (bracket && bracket.next_match_id) {
       const nextMatch = db.prepare('SELECT * FROM matches WHERE id = ?').get(bracket.next_match_id);
       if (nextMatch) {
-        if (!nextMatch.player1_id || nextMatch.player1_id === null) {
+        if (!nextMatch.player1_id) {
           db.prepare('UPDATE matches SET player1_id = ? WHERE id = ?').run(winner_id, nextMatch.id);
         } else {
           db.prepare('UPDATE matches SET player2_id = ? WHERE id = ?').run(winner_id, nextMatch.id);
@@ -135,7 +135,6 @@ router.post('/pools/:poolId/generate-late-matches', authenticate, (req, res) => 
   `);
 
   const matches = [];
-  const allExistingPlayers = existingPlayers;
 
   const generate = db.transaction(() => {
     let matchNumber = (db.prepare('SELECT MAX(match_number) as mx FROM matches WHERE pool_id = ?').get(pool.id).mx || 0) + 1;
@@ -150,7 +149,7 @@ router.post('/pools/:poolId/generate-late-matches', authenticate, (req, res) => 
 
     // Late vs existing
     for (const latePlayer of latePlayers) {
-      for (const existing of allExistingPlayers) {
+      for (const existing of existingPlayers) {
         const result = insertMatch.run(req.params.id, pool.id, latePlayer.id, existing.id, matchNumber++);
         matches.push(db.prepare('SELECT * FROM matches WHERE id = ?').get(result.lastInsertRowid));
       }
