@@ -17,6 +17,9 @@ import PoolManager from '../components/PoolManager';
 import MatchList from '../components/MatchList';
 import BracketView from '../components/BracketView';
 import ExportButton from '../components/ExportButton';
+import StaffManager from '../components/StaffManager';
+import ReviewSection from '../components/ReviewSection';
+import MessageCenter from '../components/MessageCenter';
 
 const LIFECYCLE_ACTIONS = {
   draft: [{ label: 'Open Registration', action: openRegistration }],
@@ -117,6 +120,18 @@ export default function TournamentDetail() {
         <span className={`status-badge status-${effectiveStatus}`}>{effectiveStatus.replace(/_/g, ' ')}</span>
       </div>
 
+      {/* Tournament details summary */}
+      <div className="tournament-info-bar">
+        {tournament.date && <span>📅 {tournament.date}</span>}
+        {tournament.location && <span>📍 {tournament.location}</span>}
+        {tournament.fee > 0 && <span>💰 ${tournament.fee}</span>}
+        {tournament.max_participants && <span>👥 Max {tournament.max_participants}</span>}
+        {tournament.certificate_enabled === 1 && <span>🏅 Certificates</span>}
+        {tournament.poster_url && (
+          <a href={tournament.poster_url} target="_blank" rel="noopener noreferrer" className="poster-link">🖼️ Poster</a>
+        )}
+      </div>
+
       {error && <p className="error">{error}</p>}
 
       <div className="action-bar">
@@ -141,6 +156,11 @@ export default function TournamentDetail() {
         )}
         <ExportButton tournamentId={id} />
       </div>
+
+      {/* Staff Management */}
+      <section className="section">
+        <StaffManager tournamentId={id} />
+      </section>
 
       {showRegistrationForm && (
         <section className="section">
@@ -173,6 +193,18 @@ export default function TournamentDetail() {
           <BracketView tournamentId={id} status={effectiveStatus} />
         </section>
       )}
+
+      {/* Messages (during tournament) */}
+      {['in_progress', 'in_progress_late_open'].includes(effectiveStatus) && (
+        <section className="section">
+          <MessageCenter tournamentId={id} />
+        </section>
+      )}
+
+      {/* Reviews */}
+      <section className="section">
+        <ReviewSection tournamentId={id} />
+      </section>
     </div>
   );
 }

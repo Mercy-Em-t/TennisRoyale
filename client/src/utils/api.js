@@ -15,10 +15,17 @@ async function request(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-export function createTournament(name) {
+export function createTournament(data) {
   return request('/tournaments', {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateTournament(id, data) {
+  return request(`/tournaments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   });
 }
 
@@ -125,4 +132,53 @@ export function advanceBracket(id, bracketStage) {
     method: 'POST',
     body: JSON.stringify({ bracketStage }),
   });
+}
+
+// --- Staff ---
+export function addStaff(tournamentId, data) {
+  return request(`/tournaments/${tournamentId}/staff`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function listStaff(tournamentId) {
+  return request(`/tournaments/${tournamentId}/staff`);
+}
+
+export function removeStaff(tournamentId, staffId) {
+  return request(`/tournaments/${tournamentId}/staff/${staffId}`, { method: 'DELETE' });
+}
+
+// --- Reviews ---
+export function addReview(tournamentId, data) {
+  return request(`/tournaments/${tournamentId}/reviews`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function listReviews(tournamentId) {
+  return request(`/tournaments/${tournamentId}/reviews`);
+}
+
+// --- Messages ---
+export function sendMessage(tournamentId, data) {
+  return request(`/tournaments/${tournamentId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function listMessages(tournamentId) {
+  return request(`/tournaments/${tournamentId}/messages`);
+}
+
+// --- PDF/Excel Export ---
+export function getExportPdfUrl(tournamentId) {
+  return `${API_BASE}/tournaments/${tournamentId}/export/pdf`;
+}
+
+export function getExportExcelUrl(tournamentId) {
+  return `${API_BASE}/tournaments/${tournamentId}/export/excel`;
 }

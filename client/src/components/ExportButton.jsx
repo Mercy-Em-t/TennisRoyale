@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { exportTournament } from '../utils/api';
+import { exportTournament, getExportPdfUrl, getExportExcelUrl } from '../utils/api';
 
 export default function ExportButton({ tournamentId }) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState('');
   const [error, setError] = useState('');
 
-  const handleExport = async () => {
-    setLoading(true);
+  const handleExportJson = async () => {
+    setLoading('json');
     setError('');
     try {
       const data = await exportTournament(tournamentId);
@@ -22,14 +22,28 @@ export default function ExportButton({ tournamentId }) {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setLoading('');
     }
+  };
+
+  const handleExportPdf = () => {
+    window.open(getExportPdfUrl(tournamentId), '_blank');
+  };
+
+  const handleExportExcel = () => {
+    window.open(getExportExcelUrl(tournamentId), '_blank');
   };
 
   return (
     <span className="export-button">
-      <button onClick={handleExport} disabled={loading}>
-        {loading ? 'Exporting…' : '📥 Export'}
+      <button onClick={handleExportJson} disabled={loading === 'json'}>
+        {loading === 'json' ? '…' : '📥 JSON'}
+      </button>
+      <button onClick={handleExportPdf} className="btn-pdf">
+        📄 PDF
+      </button>
+      <button onClick={handleExportExcel} className="btn-excel">
+        📊 Excel
       </button>
       {error && <span className="error small">{error}</span>}
     </span>
