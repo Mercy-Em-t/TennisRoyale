@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+.env
+*.db
+coverage/
+.DS_Store
+server/data/
+client/node_modules/
