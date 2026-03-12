@@ -3,3 +3,11 @@ database.sqlite
 database.sqlite-shm
 database.sqlite-wal
 *.log
+data/
+*.db
+.env
+coverage/
+data/
+.env
+*.log
+.DS_Store
