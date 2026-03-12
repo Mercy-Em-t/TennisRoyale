@@ -60,3 +60,11 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 module.exports = { app, db };
+const createApp = require('./app');
+
+const PORT = process.env.PORT || 3001;
+const app = createApp();
+
+app.listen(PORT, () => {
+  console.log(`TennisRoyale server running on port ${PORT}`);
+});

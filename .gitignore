@@ -1,6 +1,10 @@
 node_modules/
-.env
-*.db
 dist/
+build/
+server/data/
+server/src/data/
+*.db
+*.db-shm
+*.db-wal
+.env
 .DS_Store
-data/
