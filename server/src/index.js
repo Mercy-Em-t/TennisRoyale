@@ -1,3 +1,7 @@
+const createApp = require('./app');
+
+const PORT = process.env.PORT || 3001;
+const { app } = createApp();
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const createApp = require('./app');

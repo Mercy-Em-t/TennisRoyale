@@ -1,6 +1,15 @@
 node_modules/
 dist/
 build/
+.env
+*.db
+*.db-shm
+*.db-wal
+coverage/
+.DS_Store
+server/data/
+server/src/data/
+client/node_modules/
 server/data/
 server/src/data/
 *.db

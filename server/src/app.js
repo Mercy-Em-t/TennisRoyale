@@ -1,5 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const { getDb } = require('./models/database');
+const createTournamentRoutes = require('./routes/tournaments');
+const createRegistrationRoutes = require('./routes/registrations');
+const createPoolRoutes = require('./routes/pools');
+const createMatchRoutes = require('./routes/matches');
 
 // Import routes
 const tournamentsRouter = require('./routes/tournaments');
@@ -80,12 +86,22 @@ function createApp(dbPath) {
   app.use(cors());
   app.use(express.json());
 
+  // Rate limiting
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
   });
+  app.use('/api/', apiLimiter);
+
+  // Routes
+  app.use('/api/tournaments', createTournamentRoutes(db));
+  app.use('/api/tournaments', createRegistrationRoutes(db));
+  app.use('/api/tournaments', createPoolRoutes(db));
+  app.use('/api/tournaments', createMatchRoutes(db));
   app.use('/api', limiter);
 
   // Auth middleware - attaches req.user for all API routes
@@ -108,6 +124,7 @@ function createApp(dbPath) {
     res.json({ status: 'ok' });
   });
 
+  return { app, db };
   app.db = db;
   return app;
 }
