@@ -1,4 +1,7 @@
 node_modules/
+*.db
+data/
+.env
 dist/
 build/
 .env

@@ -1,4 +1,16 @@
 {
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "jest --verbose",
+    "start": "node src/index.js"
+  },
+  "keywords": [],
   "name": "tennis-royale-server",
   "version": "1.0.0",
   "description": "TennisRoyale Tournament Management Server",
@@ -16,6 +28,11 @@
   "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.6.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0"
     "cors": "^2.8.6",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
