@@ -6,6 +6,34 @@ const { calculatePlatformFee } = require('../utils/fees');
 function createPaymentRouter(db) {
   const router = express.Router();
 
+  // Shared logic for processing a successful payment
+  function processPaymentSuccess(payment) {
+    db.prepare('UPDATE payments SET status = ? WHERE id = ?').run('success', payment.id);
+
+    db.prepare(
+      'UPDATE tournament_registrations SET payment_status = ? WHERE tournament_id = ? AND player_id = ?'
+    ).run('paid', payment.tournament_id, payment.user_id);
+
+    const wallet = db.prepare(
+      'SELECT * FROM platform_wallet WHERE tournament_id = ?'
+    ).get(payment.tournament_id);
+
+    if (wallet) {
+      db.prepare(
+        `UPDATE platform_wallet SET 
+          total_collected = total_collected + ?,
+          platform_revenue = platform_revenue + ?,
+          host_balance = host_balance + ?
+        WHERE tournament_id = ?`
+      ).run(payment.amount, payment.platform_fee, payment.host_amount, payment.tournament_id);
+    } else {
+      db.prepare(
+        `INSERT INTO platform_wallet (id, tournament_id, total_collected, platform_revenue, host_balance)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(crypto.randomUUID(), payment.tournament_id, payment.amount, payment.platform_fee, payment.host_amount);
+    }
+  }
+
   // POST /api/payments/initiate
   router.post('/initiate', authenticate, (req, res) => {
     try {
@@ -77,34 +105,10 @@ function createPaymentRouter(db) {
       const paymentStatus = status === 'success' ? 'success' : 'failed';
 
       const transaction = db.transaction(() => {
-        // Update payment status
-        db.prepare('UPDATE payments SET status = ? WHERE id = ?').run(paymentStatus, payment.id);
-
         if (paymentStatus === 'success') {
-          // Update registration
-          db.prepare(
-            'UPDATE tournament_registrations SET payment_status = ? WHERE tournament_id = ? AND player_id = ?'
-          ).run('paid', payment.tournament_id, payment.user_id);
-
-          // Update or create wallet entry
-          const wallet = db.prepare(
-            'SELECT * FROM platform_wallet WHERE tournament_id = ?'
-          ).get(payment.tournament_id);
-
-          if (wallet) {
-            db.prepare(
-              `UPDATE platform_wallet SET 
-                total_collected = total_collected + ?,
-                platform_revenue = platform_revenue + ?,
-                host_balance = host_balance + ?
-              WHERE tournament_id = ?`
-            ).run(payment.amount, payment.platform_fee, payment.host_amount, payment.tournament_id);
-          } else {
-            db.prepare(
-              `INSERT INTO platform_wallet (id, tournament_id, total_collected, platform_revenue, host_balance)
-               VALUES (?, ?, ?, ?, ?)`
-            ).run(crypto.randomUUID(), payment.tournament_id, payment.amount, payment.platform_fee, payment.host_amount);
-          }
+          processPaymentSuccess(payment);
+        } else {
+          db.prepare('UPDATE payments SET status = ? WHERE id = ?').run('failed', payment.id);
         }
       });
 
@@ -124,30 +128,8 @@ function createPaymentRouter(db) {
         return res.status(404).json({ error: 'Payment not found' });
       }
 
-      // Simulate webhook call
       const transaction = db.transaction(() => {
-        db.prepare('UPDATE payments SET status = ? WHERE id = ?').run('success', payment.id);
-
-        db.prepare(
-          'UPDATE tournament_registrations SET payment_status = ? WHERE tournament_id = ? AND player_id = ?'
-        ).run('paid', payment.tournament_id, payment.user_id);
-
-        const wallet = db.prepare('SELECT * FROM platform_wallet WHERE tournament_id = ?').get(payment.tournament_id);
-
-        if (wallet) {
-          db.prepare(
-            `UPDATE platform_wallet SET 
-              total_collected = total_collected + ?,
-              platform_revenue = platform_revenue + ?,
-              host_balance = host_balance + ?
-            WHERE tournament_id = ?`
-          ).run(payment.amount, payment.platform_fee, payment.host_amount, payment.tournament_id);
-        } else {
-          db.prepare(
-            `INSERT INTO platform_wallet (id, tournament_id, total_collected, platform_revenue, host_balance)
-             VALUES (?, ?, ?, ?, ?)`
-          ).run(crypto.randomUUID(), payment.tournament_id, payment.amount, payment.platform_fee, payment.host_amount);
-        }
+        processPaymentSuccess(payment);
       });
 
       transaction();
