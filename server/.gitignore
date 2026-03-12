@@ -2,3 +2,8 @@ node_modules/
 data/
 *.db
 .env
+coverage/
+data/
+.env
+*.log
+.DS_Store
