@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { createDatabase } = require('./models/database');
 const { createPlayerRoutes } = require('./routes/players');
 const { createTournamentRoutes } = require('./routes/tournaments');
@@ -9,6 +10,14 @@ function createApp(dbPath) {
   const db = createDatabase(dbPath);
 
   app.use(express.json());
+
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/', limiter);
 
   app.use('/api/players', createPlayerRoutes(db));
   app.use('/api/tournaments', createTournamentRoutes(db));
