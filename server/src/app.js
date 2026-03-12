@@ -1,4 +1,16 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { createDatabase } = require('./models/database');
+const { createPlayerRoutes } = require('./routes/players');
+const { createTournamentRoutes } = require('./routes/tournaments');
+const { createMatchRoutes } = require('./routes/matches');
+
+function createApp(dbPath) {
+  const app = express();
+  const db = createDatabase(dbPath);
+
+  app.use(express.json());
+
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { getDb } = require('./models/database');
@@ -95,6 +107,11 @@ function createApp(dbPath) {
     standardHeaders: true,
     legacyHeaders: false,
   });
+  app.use('/api/', limiter);
+
+  app.use('/api/players', createPlayerRoutes(db));
+  app.use('/api/tournaments', createTournamentRoutes(db));
+  app.use('/api/matches', createMatchRoutes(db));
   app.use('/api/', apiLimiter);
 
   // Routes
@@ -129,4 +146,5 @@ function createApp(dbPath) {
   return app;
 }
 
+module.exports = { createApp };
 module.exports = createApp;

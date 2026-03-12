@@ -192,3 +192,4 @@ body {
   .details-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
 }
+@import "tailwindcss";

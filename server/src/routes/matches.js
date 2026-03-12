@@ -1,3 +1,268 @@
+const express = require('express');
+const db = require('../db');
+const { authenticate } = require('../auth');
+
+const router = express.Router({ mergeParams: true });
+
+function getTournament(id) {
+  return db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
+}
+
+function getMatch(tournamentId, matchId) {
+  return db.prepare('SELECT * FROM matches WHERE id = ? AND tournament_id = ?').get(matchId, tournamentId);
+}
+
+// GET /api/tournaments/:id/matches
+router.get('/', (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
+
+  const { pool_id, status, round } = req.query;
+  let query = 'SELECT m.*, p1.name as player1_name, p2.name as player2_name FROM matches m LEFT JOIN players p1 ON p1.id = m.player1_id LEFT JOIN players p2 ON p2.id = m.player2_id WHERE m.tournament_id = ?';
+  const params = [req.params.id];
+
+  if (pool_id) { query += ' AND m.pool_id = ?'; params.push(pool_id); }
+  if (status) { query += ' AND m.status = ?'; params.push(status); }
+  if (round) { query += ' AND m.round = ?'; params.push(round); }
+
+  query += ' ORDER BY m.round ASC, m.match_number ASC';
+
+  res.json(db.prepare(query).all(...params));
+});
+
+// GET /api/tournaments/:id/matches/:matchId
+router.get('/:matchId', (req, res) => {
+  const match = getMatch(req.params.id, req.params.matchId);
+  if (!match) return res.status(404).json({ error: 'Match not found' });
+  res.json(match);
+});
+
+// PATCH /api/tournaments/:id/matches/:matchId/schedule
+router.patch('/:matchId/schedule', authenticate, (req, res) => {
+  const match = getMatch(req.params.id, req.params.matchId);
+  if (!match) return res.status(404).json({ error: 'Match not found' });
+
+  const { scheduled_at } = req.body;
+  if (!scheduled_at) return res.status(400).json({ error: 'scheduled_at is required' });
+
+  db.prepare('UPDATE matches SET scheduled_at = ? WHERE id = ?').run(scheduled_at, match.id);
+  res.json(db.prepare('SELECT * FROM matches WHERE id = ?').get(match.id));
+});
+
+// PATCH /api/tournaments/:id/matches/:matchId/score
+router.patch('/:matchId/score', authenticate, (req, res) => {
+  const match = getMatch(req.params.id, req.params.matchId);
+  if (!match) return res.status(404).json({ error: 'Match not found' });
+
+  const { score_player1, score_player2, winner_id } = req.body;
+  if (score_player1 === undefined || score_player2 === undefined) {
+    return res.status(400).json({ error: 'score_player1 and score_player2 are required' });
+  }
+
+  if (winner_id && winner_id !== match.player1_id && winner_id !== match.player2_id) {
+    return res.status(400).json({ error: 'winner_id must be player1_id or player2_id' });
+  }
+
+  db.prepare(`
+    UPDATE matches SET score_player1 = ?, score_player2 = ?, winner_id = ?, status = 'completed' WHERE id = ?
+  `).run(score_player1, score_player2, winner_id || null, match.id);
+
+  // If this is a bracket match, auto-advance winner
+  if (winner_id) {
+    const bracket = db.prepare('SELECT * FROM brackets WHERE match_id = ?').get(match.id);
+    if (bracket && bracket.next_match_id) {
+      const nextMatch = db.prepare('SELECT * FROM matches WHERE id = ?').get(bracket.next_match_id);
+      if (nextMatch) {
+        if (!nextMatch.player1_id) {
+          db.prepare('UPDATE matches SET player1_id = ? WHERE id = ?').run(winner_id, nextMatch.id);
+        } else {
+          db.prepare('UPDATE matches SET player2_id = ? WHERE id = ?').run(winner_id, nextMatch.id);
+        }
+      }
+    }
+  }
+
+  res.json(db.prepare('SELECT * FROM matches WHERE id = ?').get(match.id));
+});
+
+// PATCH /api/tournaments/:id/matches/:matchId/status
+router.patch('/:matchId/status', authenticate, (req, res) => {
+  const match = getMatch(req.params.id, req.params.matchId);
+  if (!match) return res.status(404).json({ error: 'Match not found' });
+
+  const { status } = req.body;
+  const validStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+  if (!status || !validStatuses.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
+  }
+
+  db.prepare('UPDATE matches SET status = ? WHERE id = ?').run(status, match.id);
+  res.json(db.prepare('SELECT * FROM matches WHERE id = ?').get(match.id));
+});
+
+// POST /api/tournaments/:id/pools/:poolId/generate-late-matches
+router.post('/pools/:poolId/generate-late-matches', authenticate, (req, res) => {
+  const tournament = getTournament(req.params.id);
+  if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
+
+  const pool = db.prepare('SELECT * FROM pools WHERE id = ? AND tournament_id = ?')
+    .get(req.params.poolId, req.params.id);
+  if (!pool) return res.status(404).json({ error: 'Pool not found' });
+
+  // Get late players in pool (status = 'late')
+  const latePlayers = db.prepare(`
+    SELECT p.* FROM pool_players pp
+    JOIN players p ON p.id = pp.player_id
+    WHERE pp.pool_id = ? AND p.status = 'late'
+    ORDER BY pp.position ASC
+  `).all(pool.id);
+
+  if (latePlayers.length === 0) {
+    return res.status(400).json({ error: 'No late registration players in this pool' });
+  }
+
+  // Get existing (non-late) players in pool
+  const existingPlayers = db.prepare(`
+    SELECT p.* FROM pool_players pp
+    JOIN players p ON p.id = pp.player_id
+    WHERE pp.pool_id = ? AND p.status != 'late'
+    ORDER BY pp.position ASC
+  `).all(pool.id);
+
+  const insertMatch = db.prepare(`
+    INSERT INTO matches (tournament_id, pool_id, player1_id, player2_id, round, match_number, status, is_late_registration)
+    VALUES (?, ?, ?, ?, 1, ?, 'scheduled', 1)
+  `);
+
+  const matches = [];
+
+  const generate = db.transaction(() => {
+    let matchNumber = (db.prepare('SELECT MAX(match_number) as mx FROM matches WHERE pool_id = ?').get(pool.id).mx || 0) + 1;
+
+    // Late vs late
+    for (let i = 0; i < latePlayers.length; i++) {
+      for (let j = i + 1; j < latePlayers.length; j++) {
+        const result = insertMatch.run(req.params.id, pool.id, latePlayers[i].id, latePlayers[j].id, matchNumber++);
+        matches.push(db.prepare('SELECT * FROM matches WHERE id = ?').get(result.lastInsertRowid));
+      }
+    }
+
+    // Late vs existing
+    for (const latePlayer of latePlayers) {
+      for (const existing of existingPlayers) {
+        const result = insertMatch.run(req.params.id, pool.id, latePlayer.id, existing.id, matchNumber++);
+        matches.push(db.prepare('SELECT * FROM matches WHERE id = ?').get(result.lastInsertRowid));
+      }
+    }
+  });
+  generate();
+
+  res.status(201).json(matches);
+});
+
+module.exports = router;
+const crypto = require('crypto');
+const {
+  MATCH_STATES,
+  PLAYER_STATES,
+  TOURNAMENT_STATES,
+  canTransitionMatch,
+} = require('../models/states');
+
+function createMatchRoutes(db) {
+  const router = express.Router();
+
+  // Create a match within a tournament
+  router.post('/', (req, res) => {
+    const { tournament_id, team_a_id, team_b_id, round, context_reason } = req.body;
+
+    if (!tournament_id || !team_a_id || !team_b_id) {
+      return res.status(400).json({ error: 'tournament_id, team_a_id, and team_b_id are required' });
+    }
+
+    const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournament_id);
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+    if (tournament.state !== TOURNAMENT_STATES.IN_PROGRESS) {
+      return res.status(400).json({ error: 'Tournament must be in_progress to create matches' });
+    }
+
+    const teamA = db.prepare('SELECT * FROM players WHERE id = ?').get(team_a_id);
+    const teamB = db.prepare('SELECT * FROM players WHERE id = ?').get(team_b_id);
+    if (!teamA) return res.status(404).json({ error: 'Team A not found' });
+    if (!teamB) return res.status(404).json({ error: 'Team B not found' });
+
+    const id = crypto.randomUUID();
+    db.prepare(
+      'INSERT INTO matches (id, tournament_id, team_a_id, team_b_id, status, round, context_reason) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(id, tournament_id, team_a_id, team_b_id, MATCH_STATES.SCHEDULED, round || 1, context_reason || 'bracket');
+
+    const match = db.prepare('SELECT * FROM matches WHERE id = ?').get(id);
+    res.status(201).json(match);
+  });
+
+  // Get all matches (optionally filtered by tournament)
+  router.get('/', (req, res) => {
+    const { tournament_id } = req.query;
+    let matches;
+    if (tournament_id) {
+      matches = db.prepare('SELECT * FROM matches WHERE tournament_id = ?').all(tournament_id);
+    } else {
+      matches = db.prepare('SELECT * FROM matches').all();
+    }
+    res.json(matches);
+  });
+
+  // Get a single match with its result
+  router.get('/:id', (req, res) => {
+    const match = db.prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const result = db.prepare('SELECT * FROM results WHERE match_id = ?').get(req.params.id);
+    res.json({ ...match, result: result || null });
+  });
+
+  // Update match status (state transition)
+  router.patch('/:id/status', (req, res) => {
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const match = db.prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    if (!canTransitionMatch(match.status, status)) {
+      return res.status(400).json({
+        error: `Invalid state transition from "${match.status}" to "${status}"`,
+      });
+    }
+
+    // When match starts, set both players to active
+    if (status === MATCH_STATES.IN_PROGRESS) {
+      db.prepare('UPDATE players SET status = ? WHERE id IN (?, ?) AND status = ?').run(
+        PLAYER_STATES.ACTIVE, match.team_a_id, match.team_b_id, PLAYER_STATES.REGISTERED
+      );
+    }
+
+    db.prepare('UPDATE matches SET status = ? WHERE id = ?').run(status, req.params.id);
+    const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+    res.json(updated);
+  });
+
+  // Record match result (winner/loser)
+  router.post('/:id/result', (req, res) => {
+    const { winner_id } = req.body;
+    if (!winner_id) {
+      return res.status(400).json({ error: 'winner_id is required' });
+    }
+
+    const match = db.prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
 const { Router } = require('express');
 const crypto = require('crypto');
 
@@ -731,6 +996,45 @@ function createMatchRoutes(db) {
       return res.status(404).json({ error: 'Match not found' });
     }
 
+    if (match.status !== MATCH_STATES.IN_PROGRESS) {
+      return res.status(400).json({ error: 'Match must be in_progress to record a result' });
+    }
+
+    if (winner_id !== match.team_a_id && winner_id !== match.team_b_id) {
+      return res.status(400).json({ error: 'Winner must be one of the match participants' });
+    }
+
+    const loser_id = winner_id === match.team_a_id ? match.team_b_id : match.team_a_id;
+
+    // Record the result
+    const resultId = crypto.randomUUID();
+    db.prepare('INSERT INTO results (id, match_id, winner_id, loser_id) VALUES (?, ?, ?, ?)').run(
+      resultId, req.params.id, winner_id, loser_id
+    );
+
+    // Update match status to completed
+    db.prepare('UPDATE matches SET status = ? WHERE id = ?').run(MATCH_STATES.COMPLETED, req.params.id);
+
+    // Winner goes back to registered (ready for next match), loser is eliminated
+    db.prepare('UPDATE players SET status = ? WHERE id = ?').run(PLAYER_STATES.REGISTERED, winner_id);
+    db.prepare('UPDATE players SET status = ? WHERE id = ?').run(PLAYER_STATES.ELIMINATED, loser_id);
+
+    const result = db.prepare('SELECT * FROM results WHERE id = ?').get(resultId);
+    const updatedMatch = db.prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+
+    res.status(201).json({ match: updatedMatch, result });
+  });
+
+  // Get all results for a tournament (progression tracking)
+  router.get('/tournament/:tournament_id/results', (req, res) => {
+    const results = db.prepare(`
+      SELECT r.*, m.round, m.context_reason, m.team_a_id, m.team_b_id
+      FROM results r
+      JOIN matches m ON m.id = r.match_id
+      WHERE m.tournament_id = ?
+      ORDER BY m.round ASC, r.recorded_at ASC
+    `).all(req.params.tournament_id);
+    res.json(results);
     db.prepare("UPDATE matches SET scheduled_at = ?, status = 'scheduled' WHERE id = ?").run(scheduledAt, matchId);
     const updated = db.prepare(`
     `).all(req.params.tournamentId);
@@ -951,5 +1255,6 @@ function createMatchRoutes(db) {
   return router;
 }
 
+module.exports = { createMatchRoutes };
 module.exports = createRouter;
 module.exports = createMatchRoutes;
