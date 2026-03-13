@@ -1,12 +1,13 @@
 const express = require('express');
 
 function createRouter(db) {
-  const router = express.Router();
+  const router = express.Router({ mergeParams: true });
 
-  // GET /api/exports/tournament/:id - Export full tournament data
-  router.get('/tournament/:id', (req, res) => {
+  // GET /api/tournaments/:id/export - Export full tournament data
+  router.get('/', (req, res) => {
     try {
-      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
+      const tournamentId = req.params.tournamentId || req.params.id;
+      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
       if (!tournament) {
         return res.status(404).json({ error: 'Tournament not found' });
       }
@@ -20,7 +21,7 @@ function createRouter(db) {
       `).all(req.params.id);
 
       const pools = db.prepare('SELECT * FROM pools WHERE tournament_id = ? ORDER BY pool_order').all(req.params.id);
-      
+
       const poolPlayers = db.prepare(`
         SELECT pp.*, p.first_name, p.last_name, po.name as pool_name
         FROM pool_players pp
@@ -80,10 +81,11 @@ function createRouter(db) {
     }
   });
 
-  // GET /api/exports/tournament/:id/registrations - Export registrations as CSV
-  router.get('/tournament/:id/registrations', (req, res) => {
+  // GET /api/tournaments/:id/export/registrations - Export registrations
+  router.get('/registrations', (req, res) => {
     try {
-      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
+      const tournamentId = req.params.tournamentId || req.params.id;
+      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
       if (!tournament) {
         return res.status(404).json({ error: 'Tournament not found' });
       }
@@ -98,16 +100,16 @@ function createRouter(db) {
       `).all(req.params.id);
 
       const format = req.query.format || 'json';
-      
+
       if (format === 'csv') {
         const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Skill Level', 'Registration Date', 'Status', 'Seed', 'Payment Status', 'Waiver Signed', 'Check-in Time'];
         const rows = registrations.map(r => [
           r.id, r.first_name, r.last_name, r.email, r.phone || '', r.skill_level || '',
           r.registration_date, r.status, r.seed || '', r.payment_status, r.waiver_signed ? 'Yes' : 'No', r.check_in_time || ''
         ]);
-        
+
         const csv = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="registrations-${tournament.id}.csv"`);
         res.send(csv);
@@ -119,10 +121,11 @@ function createRouter(db) {
     }
   });
 
-  // GET /api/exports/tournament/:id/matches - Export matches
-  router.get('/tournament/:id/matches', (req, res) => {
+  // GET /api/tournaments/:id/export/matches - Export matches
+  router.get('/matches', (req, res) => {
     try {
-      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
+      const tournamentId = req.params.tournamentId || req.params.id;
+      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
       if (!tournament) {
         return res.status(404).json({ error: 'Tournament not found' });
       }
@@ -149,7 +152,7 @@ function createRouter(db) {
       `).all(req.params.id);
 
       const format = req.query.format || 'json';
-      
+
       if (format === 'csv') {
         const headers = ['Match ID', 'Stage', 'Round', 'Match #', 'Player 1', 'Player 2', 'Score', 'Winner', 'Court', 'Pool', 'Scheduled', 'Status'];
         const rows = matches.map(m => [
@@ -159,9 +162,9 @@ function createRouter(db) {
           m.player1_score && m.player2_score ? `${m.player1_score} vs ${m.player2_score}` : '',
           m.winner || '', m.court_name || '', m.pool_name || '', m.scheduled_time || '', m.status
         ]);
-        
+
         const csv = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="matches-${tournament.id}.csv"`);
         res.send(csv);
@@ -201,7 +204,7 @@ function createRouter(db) {
       };
 
       const stageOrder = ['round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final'];
-      
+
       stageOrder.forEach(stage => {
         const stageMatches = bracketMatches.filter(m => m.bracket_stage === stage);
         if (stageMatches.length > 0) {
@@ -229,10 +232,11 @@ function createRouter(db) {
     }
   });
 
-  // GET /api/exports/tournament/:id/standings - Export standings
-  router.get('/tournament/:id/standings', (req, res) => {
+  // GET /api/tournaments/:id/export/standings - Export standings
+  router.get('/standings', (req, res) => {
     try {
-      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
+      const tournamentId = req.params.tournamentId || req.params.id;
+      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
       if (!tournament) {
         return res.status(404).json({ error: 'Tournament not found' });
       }
@@ -266,7 +270,7 @@ function createRouter(db) {
       });
 
       const format = req.query.format || 'json';
-      
+
       if (format === 'csv') {
         const headers = ['Pool', 'Rank', 'Player', 'Wins', 'Losses', 'Games Won', 'Games Lost', 'Game Diff'];
         const rows = [];
@@ -275,9 +279,9 @@ function createRouter(db) {
             rows.push([poolName, p.rank, p.player, p.wins, p.losses, p.games_won, p.games_lost, p.game_diff]);
           });
         });
-        
+
         const csv = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="standings-${tournament.id}.csv"`);
         res.send(csv);
@@ -289,10 +293,11 @@ function createRouter(db) {
     }
   });
 
-  // GET /api/exports/tournament/:id/financial - Export financial report
-  router.get('/tournament/:id/financial', (req, res) => {
+  // GET /api/tournaments/:id/export/financial - Export financial report
+  router.get('/financial', (req, res) => {
     try {
-      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(req.params.id);
+      const tournamentId = req.params.tournamentId || req.params.id;
+      const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
       if (!tournament) {
         return res.status(404).json({ error: 'Tournament not found' });
       }
@@ -317,23 +322,23 @@ function createRouter(db) {
       `).get(req.params.id);
 
       const format = req.query.format || 'json';
-      
+
       if (format === 'csv') {
         const headers = ['Receipt #', 'Date', 'Player', 'Email', 'Amount', 'Currency', 'Method', 'Status', 'Notes'];
         const rows = payments.map(p => [
           p.receipt_number, p.created_at, `${p.first_name} ${p.last_name}`, p.email,
           p.amount, p.currency, p.payment_method, p.status, p.notes || ''
         ]);
-        
+
         // Add summary row
         rows.push(['', '', '', '', '', '', '', '', '']);
         rows.push(['SUMMARY', '', '', '', '', '', '', '', '']);
         rows.push(['Total Revenue', '', '', '', summary.total_revenue, 'KES', '', '', '']);
         rows.push(['Total Refunds', '', '', '', summary.total_refunds, 'KES', '', '', '']);
         rows.push(['Net Revenue', '', '', '', summary.total_revenue - summary.total_refunds, 'KES', '', '', '']);
-        
+
         const csv = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="financial-${tournament.id}.csv"`);
         res.send(csv);
@@ -350,6 +355,15 @@ function createRouter(db) {
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // PDF and Excel placeholders as expected by frontend
+  router.get('/pdf', (req, res) => {
+    res.status(501).json({ error: 'PDF export not implemented in this version' });
+  });
+
+  router.get('/excel', (req, res) => {
+    res.status(501).json({ error: 'Excel export not implemented in this version' });
   });
 
   return router;

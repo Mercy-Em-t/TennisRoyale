@@ -1,0 +1,111 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "matches",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
+                    "fieldPath": "participantsArray",
+                    "arrayConfig": "CONTAINS"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "matches",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
+                    "fieldPath": "participantsArray",
+                    "arrayConfig": "CONTAINS"
+                },
+                {
+                    "fieldPath": "isBracket",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "round",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "matches",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "isBracket",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "round",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "tournaments",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "participants",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "poolId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "points",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "ledger",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "hostId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "auditLog",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "matchId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

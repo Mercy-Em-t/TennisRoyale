@@ -1,0 +1,62 @@
+{
+    "name": "Tennis Royale",
+    "short_name": "Tennis Royale",
+    "description": "Real-time tournament management platform for tennis",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "theme_color": "#0f172a",
+    "background_color": "#020617",
+    "lang": "en",
+    "icons": [
+        {
+            "src": "/icon-72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable any"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "My Matches",
+            "short_name": "Matches",
+            "url": "/feed",
+            "icons": [
+                {
+                    "src": "/icon-72.png",
+                    "sizes": "72x72"
+                }
+            ]
+        },
+        {
+            "name": "Events",
+            "short_name": "Events",
+            "url": "/events",
+            "icons": [
+                {
+                    "src": "/icon-72.png",
+                    "sizes": "72x72"
+                }
+            ]
+        }
+    ],
+    "screenshots": [],
+    "categories": [
+        "sports",
+        "productivity"
+    ],
+    "prefer_related_applications": false
+}

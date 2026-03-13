@@ -13,6 +13,8 @@ import {
   generateLateMatches,
 } from '../api';
 import { Pool, Player, Tournament } from '../types';
+import { Plus, Trash2, Zap, Users, Shield, Wand2, ChevronRight, GripVertical, Layers, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
   tournamentId: number;
@@ -28,6 +30,7 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
   const [autoCount, setAutoCount] = useState(4);
   const [generatedPools, setGeneratedPools] = useState<Set<number>>(new Set());
   const [lateGeneratedPools, setLateGeneratedPools] = useState<Set<number>>(new Set());
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -46,7 +49,7 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
       setPools(poolsData);
       setUnassigned(accepted);
     } catch {
-      setError('Failed to load pools');
+      setError('Matrix synchronization failure: could not load pools');
     } finally {
       setLoading(false);
     }
@@ -68,7 +71,7 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
         await load();
       } catch (err: unknown) {
         const e = err as { response?: { data?: { error?: string } } };
-        setError(e.response?.data?.error || 'Failed to add player to pool');
+        setError(e.response?.data?.error || 'Injection failed');
       }
     } else if (source.droppableId.startsWith('pool-') && destination.droppableId === 'unassigned') {
       const poolId = Number(source.droppableId.replace('pool-', ''));
@@ -77,13 +80,12 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
         await load();
       } catch (err: unknown) {
         const e = err as { response?: { data?: { error?: string } } };
-        setError(e.response?.data?.error || 'Failed to remove player');
+        setError(e.response?.data?.error || 'Extraction failed');
       }
     } else if (source.droppableId.startsWith('pool-') && destination.droppableId.startsWith('pool-')) {
       const srcPoolId = Number(source.droppableId.replace('pool-', ''));
       const dstPoolId = Number(destination.droppableId.replace('pool-', ''));
       if (srcPoolId === dstPoolId) {
-        // Reorder within same pool
         const pool = pools.find((p) => p.id === srcPoolId);
         if (!pool) return;
         const newPlayers = [...pool.players];
@@ -93,17 +95,16 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
           await reorderPoolPlayers(tournamentId, srcPoolId, newPlayers.map((p) => p.id));
           await load();
         } catch {
-          setError('Failed to reorder');
+          setError('Reordering failed');
         }
       } else {
-        // Move between pools
         try {
           await removePlayerFromPool(tournamentId, srcPoolId, playerId);
           await addPlayerToPool(tournamentId, dstPoolId, playerId);
           await load();
         } catch (err: unknown) {
           const e = err as { response?: { data?: { error?: string } } };
-          setError(e.response?.data?.error || 'Failed to move player');
+          setError(e.response?.data?.error || 'Inter-pool transfer failed');
         }
       }
     }
@@ -117,28 +118,30 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
       await load();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      setError(e.response?.data?.error || 'Failed to create pool');
+      setError(e.response?.data?.error || 'Pool initialization failed');
     }
   };
 
   const handleDeletePool = async (poolId: number) => {
-    if (!confirm('Delete this pool?')) return;
     try {
       await deletePool(tournamentId, poolId);
       await load();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      setError(e.response?.data?.error || 'Failed to delete pool');
+      setError(e.response?.data?.error || 'Pool decommissioning failed');
     }
   };
 
   const handleAutoAssign = async () => {
+    setIsAutoAssigning(true);
     try {
       await autoAssignPools(tournamentId, autoCount);
       await load();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      setError(e.response?.data?.error || 'Auto-assign failed');
+      setError(e.response?.data?.error || 'Algorithmic distribution failed');
+    } finally {
+      setIsAutoAssigning(false);
     }
   };
 
@@ -148,7 +151,7 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
       setGeneratedPools((prev) => new Set([...prev, poolId]));
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      setError(e.response?.data?.error || 'Failed to generate matches');
+      setError(e.response?.data?.error || 'Round-robin generation failed');
     }
   };
 
@@ -158,74 +161,102 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
       setLateGeneratedPools((prev) => new Set([...prev, poolId]));
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      setError(e.response?.data?.error || 'Failed to generate late matches');
+      setError(e.response?.data?.error || 'Late injector protocols failed');
     }
   };
 
   const hasLatePlayersInPool = (pool: Pool) => pool.players.some((p) => p.status === 'late');
 
-  if (loading) return <div className="text-center text-gray-500 py-8">Loading...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center p-20 gap-4">
+      <Loader2 className="animate-spin text-primary-500" size={32} />
+      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Loading Pool Matrix</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-10">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 text-sm">{error}</div>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest flex items-center gap-3"
+        >
+          <AlertCircle size={14} /> {error}
+        </motion.div>
       )}
 
-      {/* Toolbar */}
-      <div className="bg-white rounded-xl shadow-sm border p-4 flex flex-wrap items-center gap-3">
-        <input
-          type="text"
-          placeholder="New pool name..."
-          value={newPoolName}
-          onChange={(e) => setNewPoolName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleCreatePool()}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          onClick={handleCreatePool}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-        >
-          + Add Pool
-        </button>
-        <div className="flex items-center gap-2 ml-4">
-          <span className="text-sm text-gray-600">Pool size:</span>
-          <select
-            value={autoCount}
-            onChange={(e) => setAutoCount(Number(e.target.value))}
-            className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {/* Control Panel */}
+      <div className="glass-card rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center gap-6 border-slate-800/50">
+        <div className="flex-1 flex items-center gap-4 w-full">
+          <div className="relative flex-1">
+            <Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+            <input
+              type="text"
+              placeholder="Sector designation (e.g. Group A)..."
+              value={newPoolName}
+              onChange={(e) => setNewPoolName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreatePool()}
+              className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-xs font-black focus:outline-none focus:ring-1 focus:ring-primary-600 transition-all placeholder:text-slate-800"
+            />
+          </div>
+          <button
+            onClick={handleCreatePool}
+            className="bg-primary-600 hover:bg-primary-500 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-primary-950/30 flex items-center gap-2 whitespace-nowrap"
           >
-            {[2, 4, 6, 8].map((n) => (
-              <option key={n} value={n}>{n} players/pool</option>
-            ))}
-          </select>
+            <Plus size={16} /> Initialize Pool
+          </button>
+        </div>
+
+        <div className="w-full md:w-px h-px md:h-12 bg-slate-800/50" />
+
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="bg-slate-950/50 border border-slate-800 rounded-2xl flex items-center gap-2 px-4 py-1">
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Density:</span>
+            <select
+              value={autoCount}
+              onChange={(e) => setAutoCount(Number(e.target.value))}
+              className="bg-transparent text-white text-[10px] font-black uppercase tracking-widest py-3 focus:outline-none cursor-pointer"
+            >
+              {[2, 4, 6, 8].map((n) => (
+                <option key={n} value={n} className="bg-slate-900">{n} Units/Sector</option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={handleAutoAssign}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition"
+            disabled={isAutoAssigning}
+            className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-950/30 flex items-center justify-center gap-2"
           >
-            Auto-Assign
+            {isAutoAssigning ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+            Auto-Matrix
           </button>
         </div>
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-4">
-          {/* Unassigned Players */}
-          <div className="w-56 flex-shrink-0">
-            <div className="bg-white rounded-xl shadow-sm border">
-              <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
-                <h3 className="font-medium text-gray-700 text-sm">Unassigned Players</h3>
-                <p className="text-xs text-gray-400">{unassigned.length} players</p>
+        <div className="flex flex-col lg:flex-row gap-10">
+          {/* Unassigned System Roster */}
+          <div className="w-full lg:w-80 shrink-0">
+            <div className="glass-card rounded-[2.5rem] overflow-hidden border-slate-800/50 sticky top-[100px]">
+              <div className="px-8 py-6 border-b border-slate-800/50 bg-slate-950/30 flex items-center justify-between">
+                <div>
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Spare Units</h3>
+                  <p className="text-[9px] font-bold text-slate-600 uppercase mt-1 tracking-widest">{unassigned.length} Pending Allocation</p>
+                </div>
+                <Users size={16} className="text-slate-700" />
               </div>
               <Droppable droppableId="unassigned">
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`min-h-24 p-2 transition ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                    className={`min-h-[200px] p-4 space-y-2 transition-all ${snapshot.isDraggingOver ? 'bg-primary-500/5' : ''}`}
                   >
                     {unassigned.length === 0 && (
-                      <p className="text-xs text-gray-400 text-center py-4">All players assigned</p>
+                      <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-20">
+                        <CheckCircle2 size={32} />
+                        <p className="text-[10px] font-black uppercase tracking-widest">Roster Clear</p>
+                      </div>
                     )}
                     {unassigned.map((player, index) => (
                       <Draggable key={player.id} draggableId={`player-${player.id}`} index={index}>
@@ -234,14 +265,18 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`mb-1 px-3 py-2 rounded-lg text-sm font-medium cursor-grab transition ${
-                              snapshot.isDragging ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            className={`group px-5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-3 border shadow-sm ${snapshot.isDragging
+                                ? 'bg-primary-600 text-white border-primary-500 shadow-2xl scale-[1.02] rotate-1'
+                                : 'bg-slate-900/50 text-slate-400 border-slate-800 hover:border-slate-700 hover:bg-slate-900 group-hover:text-white'
+                              }`}
                           >
-                            {player.seed && <span className="text-xs mr-1 opacity-60">#{player.seed}</span>}
-                            {player.name}
+                            <GripVertical size={14} className="text-slate-700 group-hover:text-slate-500" />
+                            <div className="flex-1 truncate">
+                              {player.seed && <span className="text-primary-500 mr-2 text-[10px]">#{player.seed}</span>}
+                              {player.name}
+                            </div>
                             {player.status === 'late' && (
-                              <span className="ml-1 text-xs bg-blue-100 text-blue-600 px-1 rounded">late</span>
+                              <span className="px-1.5 py-0.5 bg-indigo-500/10 text-indigo-400 text-[8px] rounded-md border border-indigo-500/20">LATE</span>
                             )}
                           </div>
                         )}
@@ -254,84 +289,116 @@ export default function PoolsPage({ tournamentId, tournament: _tournament }: Pro
             </div>
           </div>
 
-          {/* Pools */}
-          <div className="flex-1 grid grid-cols-2 gap-4 content-start">
+          {/* Active Pool Sectors */}
+          <div className="flex-1">
             {pools.length === 0 ? (
-              <div className="col-span-2 text-center text-gray-400 py-12 bg-white rounded-xl border">
-                No pools yet. Create pools above or use Auto-Assign.
+              <div className="p-32 glass-card rounded-[3rem] text-center border-dashed border-slate-800 flex flex-col items-center justify-center gap-6">
+                <div className="w-16 h-16 bg-slate-950 rounded-full flex items-center justify-center border border-slate-800">
+                  <Layers size={24} className="text-slate-800" />
+                </div>
+                <div>
+                  <h4 className="text-white font-black uppercase tracking-widest text-sm mb-2">Matrix Sectors Undefined</h4>
+                  <p className="text-slate-600 font-bold text-xs">Initialize groups or use algorithm to start distribution.</p>
+                </div>
               </div>
             ) : (
-              pools.map((pool) => (
-                <div key={pool.id} className="bg-white rounded-xl shadow-sm border">
-                  <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-700 text-sm">{pool.name}</h3>
-                      <p className="text-xs text-gray-400">{pool.players.length} players</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {generatedPools.has(pool.id) && (
-                        <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Matches ✓</span>
-                      )}
-                      <button
-                        onClick={() => handleGenerateMatches(pool.id)}
-                        className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded hover:bg-purple-200 transition"
-                      >
-                        Gen Matches
-                      </button>
-                      {hasLatePlayersInPool(pool) && (
-                        <button
-                          onClick={() => handleGenerateLateMatches(pool.id)}
-                          className={`text-xs px-2 py-1 rounded transition ${lateGeneratedPools.has(pool.id) ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-                        >
-                          {lateGeneratedPools.has(pool.id) ? 'Late ✓' : 'Late Matches'}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeletePool(pool.id)}
-                        className="text-xs bg-red-100 text-red-500 px-2 py-1 rounded hover:bg-red-200 transition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                  <Droppable droppableId={`pool-${pool.id}`}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`min-h-16 p-2 transition ${snapshot.isDraggingOver ? 'bg-purple-50' : ''}`}
-                      >
-                        {pool.players.length === 0 && (
-                          <p className="text-xs text-gray-400 text-center py-3">Drop players here</p>
-                        )}
-                        {pool.players.map((player, index) => (
-                          <Draggable key={player.id} draggableId={`player-${player.id}`} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`mb-1 px-3 py-2 rounded-lg text-sm font-medium cursor-grab flex items-center justify-between transition ${
-                                  snapshot.isDragging ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                              >
-                                <span>
-                                  {player.seed && <span className="text-xs mr-1 opacity-60">#{player.seed}</span>}
-                                  {player.name}
-                                </span>
-                                {player.status === 'late' && (
-                                  <span className="text-xs bg-blue-100 text-blue-600 px-1 rounded">late</span>
-                                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <AnimatePresence>
+                  {pools.map((pool) => (
+                    <motion.div
+                      key={pool.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="glass-card rounded-[2.5rem] overflow-hidden border-slate-800/50 flex flex-col"
+                    >
+                      <div className="px-8 py-6 border-b border-slate-800/50 bg-slate-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-lg font-black text-white uppercase tracking-tight">{pool.name}</h3>
+                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-2">
+                            <Users size={10} /> {pool.players.length} Units Contained
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {generatedPools.has(pool.id) ? (
+                            <div className="px-3 py-1.5 bg-green-500/10 text-green-400 text-[9px] font-black uppercase tracking-widest rounded-xl border border-green-500/20">
+                              SYNCHRONIZED
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleGenerateMatches(pool.id)}
+                              className="px-4 py-2 bg-slate-900 border border-slate-800 hover:border-primary-500 text-slate-400 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                            >
+                              <Zap size={10} /> Gen Matches
+                            </button>
+                          )}
+
+                          {hasLatePlayersInPool(pool) && (
+                            <button
+                              onClick={() => handleGenerateLateMatches(pool.id)}
+                              className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${lateGeneratedPools.has(pool.id) ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-indigo-600 text-white'}`}
+                            >
+                              {lateGeneratedPools.has(pool.id) ? 'LATE INJECTED' : 'INJECT LATE'}
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleDeletePool(pool.id)}
+                            className="p-2 text-slate-700 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      <Droppable droppableId={`pool-${pool.id}`}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`min-h-[120px] p-6 space-y-3 transition-all ${snapshot.isDraggingOver ? 'bg-indigo-500/5' : ''}`}
+                          >
+                            {pool.players.length === 0 && (
+                              <div className="py-10 border-2 border-dashed border-slate-900 rounded-3xl flex items-center justify-center">
+                                <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Awaiting Injection</p>
                               </div>
                             )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              ))
+                            {pool.players.map((player, index) => (
+                              <Draggable key={player.id} draggableId={`player-${player.id}`} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className={`group px-6 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center justify-between transition-all border ${snapshot.isDragging
+                                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-2xl scale-[1.05] z-50'
+                                        : 'bg-slate-950/40 text-slate-400 border-slate-900 hover:border-slate-800'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-4 truncate">
+                                      <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] font-black transition-colors group-hover:border-primary-500/30 group-hover:text-primary-400">
+                                        {index + 1}
+                                      </div>
+                                      <span className="truncate">
+                                        {player.seed && <span className="text-primary-500 mr-2">#{player.seed}</span>}
+                                        {player.name}
+                                      </span>
+                                    </div>
+                                    {player.status === 'late' && (
+                                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/10 text-indigo-400 text-[8px] rounded-md border border-indigo-500/20 font-black">
+                                        <Shield size={8} /> LATE
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
             )}
           </div>
         </div>

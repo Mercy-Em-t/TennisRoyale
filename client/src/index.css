@@ -1,195 +1,153 @@
-:root {
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --danger: #dc2626;
-  --bg: #f8fafc;
-  --card-bg: #ffffff;
-  --text: #1e293b;
-  --text-light: #64748b;
-  --border: #e2e8f0;
-  --radius: 8px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+
+  --color-accent-light: #fde047;
+  --color-accent: #eab308;
+  --color-accent-dark: #a16207;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-display: 'Outfit', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* ─────────────────────────────────────
+   BASE — MOBILE FIRST
+   ───────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+
+:root {
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: #020617;
+  /* slate-950 */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
-.app { min-height: 100vh; }
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+}
 
-/* Navbar */
-.navbar {
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 2rem;
-  display: flex;
-  justify-content: space-between;
+/* ─────────────────────────────────────
+   UTILITIES
+   ───────────────────────────────────── */
+
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.75);
+  /* slate-900 / 75% */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.4),
+    0 24px 48px -12px rgba(0, 0, 0, 0.5);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─────────────────────────────────────
+   SAFE AREA INSETS
+   ───────────────────────────────────── */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* Touch targets */
+button,
+a,
+[role="button"] {
+  min-height: 44px;
+  display: inline-flex;
   align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  justify-content: center;
 }
-.nav-brand { font-size: 1.5rem; font-weight: 700; text-decoration: none; color: var(--text); }
-.nav-links { display: flex; gap: 1.5rem; align-items: center; }
-.nav-links a { text-decoration: none; color: var(--text-light); font-weight: 500; }
-.nav-links a:hover { color: var(--primary); }
 
-/* Buttons */
-.btn {
-  padding: 0.5rem 1.5rem;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 1rem;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
+.link-reset {
+  min-height: unset;
+  display: inline;
 }
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-dark); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-secondary { background: var(--border); color: var(--text); }
-.btn-logout { background: none; border: 1px solid var(--border); padding: 0.4rem 1rem; border-radius: var(--radius); cursor: pointer; }
-.btn-large { padding: 0.75rem 2rem; font-size: 1.1rem; }
 
-/* Main Content */
-.main-content { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 
-/* Auth */
-.auth-page { display: flex; justify-content: center; padding-top: 4rem; }
-.auth-form {
-  background: var(--card-bg);
-  padding: 2rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  width: 100%;
-  max-width: 400px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.auth-form h2 { margin-bottom: 1.5rem; }
-.auth-form input[type="email"],
-.auth-form input[type="password"],
-.auth-form input[type="text"] {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 1rem;
-  font-size: 1rem;
+
+.page-transition {
+  animation: fadeIn 0.4s ease-out;
 }
-.auth-form .btn { width: 100%; margin-bottom: 1rem; }
-.role-select { display: flex; gap: 1.5rem; margin-bottom: 1rem; }
-.role-select label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
-
-/* Tournaments */
-.tournaments-page h1 { margin-bottom: 1.5rem; }
-.filters { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-.filters input {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 1rem;
-}
-.tournament-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
-
-/* Tournament Card */
-.tournament-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-}
-.tournament-card h3 { margin-bottom: 0.5rem; }
-.tournament-card h3 a { text-decoration: none; color: var(--text); }
-.tournament-card h3 a:hover { color: var(--primary); }
-.tournament-card p { margin-bottom: 0.25rem; color: var(--text-light); font-size: 0.9rem; }
-.tournament-card .btn { margin-top: 1rem; display: inline-block; text-decoration: none; }
-.sport-badge { display: inline-block; background: var(--primary); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
-
-/* Tournament Details */
-.tournament-details { max-width: 800px; }
-.tournament-details h1 { margin-bottom: 1.5rem; }
-.details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
-.detail-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-}
-.detail-card h3 { margin-bottom: 1rem; color: var(--primary); }
-.entry-fee { font-size: 2rem; font-weight: 700; color: var(--primary); }
-.actions { display: flex; gap: 1rem; margin-top: 1rem; }
-.status-badge { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
-.status-badge.published { background: #dbeafe; color: var(--primary); }
-.status-badge.ongoing { background: #fef3c7; color: #92400e; }
-.status-badge.completed { background: #d1fae5; color: #065f46; }
-.status-badge.draft { background: #f1f5f9; color: var(--text-light); }
-.payment-badge.paid { background: #d1fae5; color: #065f46; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
-.payment-badge.pending { background: #fef3c7; color: #92400e; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
-
-/* Modal */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 200; }
-.modal { background: var(--card-bg); padding: 2rem; border-radius: var(--radius); max-width: 450px; width: 90%; }
-.modal h2 { margin-bottom: 1rem; }
-.payment-details { margin-bottom: 1.5rem; }
-.payment-details p { margin-bottom: 0.5rem; }
-.fee-breakdown { font-size: 0.85rem; color: var(--text-light); }
-.modal-actions { display: flex; gap: 1rem; }
-
-/* Dashboard */
-.revenue-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-.stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; text-align: center; }
-.stat-card h3 { font-size: 2rem; color: var(--primary); }
-.stat-card p { color: var(--text-light); }
-.dashboard-actions { margin-bottom: 2rem; }
-
-/* Create Tournament */
-.tournament-form {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 2rem;
-  max-width: 600px;
-}
-.tournament-form label { display: block; margin-bottom: 1rem; font-weight: 500; }
-.tournament-form input,
-.tournament-form textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-top: 0.25rem;
-  font-size: 1rem;
-  font-family: inherit;
-}
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.tournament-form .btn { margin-top: 1rem; }
-
-/* Player Dashboard */
-.my-tournaments { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-.my-tournament-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-}
-.my-tournament-card h3 a { text-decoration: none; color: var(--text); }
-.empty-state { text-align: center; padding: 3rem; }
-.empty-state p { margin-bottom: 1rem; color: var(--text-light); }
-
-/* Utility */
-.error { color: var(--danger); margin-bottom: 1rem; }
-.success { color: var(--success); margin-bottom: 1rem; }
-.info { color: var(--primary); margin-bottom: 1rem; }
-.loading { text-align: center; padding: 2rem; }
-
-@media (max-width: 768px) {
-  .navbar { flex-direction: column; gap: 1rem; }
-  .details-grid { grid-template-columns: 1fr; }
-  .form-row { grid-template-columns: 1fr; }
-}
-@import "tailwindcss";

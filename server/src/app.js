@@ -1,45 +1,44 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
-const { createDatabase } = require('./models/database');
-const { createPlayerRoutes } = require('./routes/players');
-const { createTournamentRoutes } = require('./routes/tournaments');
-const { createMatchRoutes } = require('./routes/matches');
-
-function createApp(dbPath) {
-  const app = express();
-  const db = createDatabase(dbPath);
-
-  app.use(express.json());
-
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const { getDb } = require('./models/database');
+const { getDb, initializeDb } = require('./models/database');
+
+// Import route creators
+const createAuthRoutes = require('./routes/auth');
+const createPlayerRoutes = require('./routes/players');
 const createTournamentRoutes = require('./routes/tournaments');
 const createRegistrationRoutes = require('./routes/registrations');
 const createPoolRoutes = require('./routes/pools');
 const createMatchRoutes = require('./routes/matches');
+const createCourtRoutes = require('./routes/courts');
+const createCheckInRoutes = require('./routes/checkin');
+const createPaymentRoutes = require('./routes/payments');
+const createWaiverRoutes = require('./routes/waivers');
+const createExportRoutes = require('./routes/exports');
+const createAuditRoutes = require('./routes/audit');
+const createStaffRoutes = require('./routes/staff');
+const createMessageRoutes = require('./routes/messages');
 
-// Import routes
-const tournamentsRouter = require('./routes/tournaments');
-const playersRouter = require('./routes/players');
-const registrationsRouter = require('./routes/registrations');
-const poolsRouter = require('./routes/pools');
-const matchesRouter = require('./routes/matches');
-const courtsRouter = require('./routes/courts');
-const checkInRouter = require('./routes/checkin');
-const paymentsRouter = require('./routes/payments');
-const waiversRouter = require('./routes/waivers');
-const exportsRouter = require('./routes/exports');
-const auditRouter = require('./routes/audit');
+const { createAuthMiddleware } = require('./middleware/auth');
 
-function createApp(db) {
+function createApp(dbPath) {
   const app = express();
+  const db = getDb(dbPath);
+  initializeDb(db);
 
-  // Middleware
   app.use(cors());
   app.use(express.json());
-  
-  // Request logging middleware
+
+  // Rate limiting
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/', limiter);
+
+  // Request logging
   app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
@@ -49,23 +48,41 @@ function createApp(db) {
     next();
   });
 
-  // Health check
-  app.get('/health', (req, res) => {
+  // Public Health check
+  app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
   });
 
-  // API routes
-  app.use('/api/tournaments', tournamentsRouter(db));
-  app.use('/api/players', playersRouter(db));
-  app.use('/api/registrations', registrationsRouter(db));
-  app.use('/api/pools', poolsRouter(db));
-  app.use('/api/matches', matchesRouter(db));
-  app.use('/api/courts', courtsRouter(db));
-  app.use('/api/checkin', checkInRouter(db));
-  app.use('/api/payments', paymentsRouter(db));
-  app.use('/api/waivers', waiversRouter(db));
-  app.use('/api/exports', exportsRouter(db));
-  app.use('/api/audit', auditRouter(db));
+  // Auth Routes (Public)
+  app.use('/api/auth', createAuthRoutes(db));
+
+  // Protected API Routes
+  app.use('/api', createAuthMiddleware(db));
+
+  // Entity Routes
+  app.use('/api/players', createPlayerRoutes(db));
+
+  const tournamentRouter = createTournamentRoutes(db);
+  app.use('/api/tournaments', tournamentRouter);
+
+  // Nested paths for tournaments
+  tournamentRouter.use('/:tournamentId/registrations', createRegistrationRoutes(db));
+  tournamentRouter.use('/:tournamentId/pools', createPoolRoutes(db));
+  tournamentRouter.use('/:tournamentId/matches', createMatchRoutes(db));
+  tournamentRouter.use('/:tournamentId/export', createExportRoutes(db));
+
+  // Also keep top-level for backward compatibility or direct access
+  app.use('/api/registrations', createRegistrationRoutes(db));
+  app.use('/api/pools', createPoolRoutes(db));
+  app.use('/api/matches', createMatchRoutes(db));
+  app.use('/api/courts', createCourtRoutes(db));
+  app.use('/api/checkin', createCheckInRoutes(db));
+  app.use('/api/payments', createPaymentRoutes(db));
+  app.use('/api/waivers', createWaiverRoutes(db));
+  app.use('/api/exports', createExportRoutes(db));
+  app.use('/api/audit', createAuditRoutes(db));
+  app.use('/api/staff', createStaffRoutes(db));
+  app.use('/api/messages', createMessageRoutes(db));
 
   // 404 handler
   app.use((req, res) => {
@@ -78,73 +95,7 @@ function createApp(db) {
     res.status(500).json({ error: 'Internal server error', message: err.message });
   });
 
-const rateLimit = require('express-rate-limit');
-const { getDb, initializeDb } = require('./models/database');
-const { authMiddleware } = require('./middleware/auth');
-const createAuthRoutes = require('./routes/auth');
-const createTournamentRoutes = require('./routes/tournaments');
-const createRegistrationRoutes = require('./routes/registrations');
-const createMatchRoutes = require('./routes/matches');
-const createPoolRoutes = require('./routes/pools');
-const createStaffRoutes = require('./routes/staff');
-const createMessageRoutes = require('./routes/messages');
-const createPaymentRoutes = require('./routes/payments');
-
-function createApp(dbPath) {
-  const app = express();
-  const db = getDb(dbPath);
-  initializeDb(db);
-
-  app.use(cors());
-  app.use(express.json());
-
-  // Rate limiting
-  const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-  app.use('/api/', limiter);
-
-  app.use('/api/players', createPlayerRoutes(db));
-  app.use('/api/tournaments', createTournamentRoutes(db));
-  app.use('/api/matches', createMatchRoutes(db));
-  app.use('/api/', apiLimiter);
-
-  // Routes
-  app.use('/api/tournaments', createTournamentRoutes(db));
-  app.use('/api/tournaments', createRegistrationRoutes(db));
-  app.use('/api/tournaments', createPoolRoutes(db));
-  app.use('/api/tournaments', createMatchRoutes(db));
-  app.use('/api', limiter);
-
-  // Auth middleware - attaches req.user for all API routes
-  app.use('/api', authMiddleware(db));
-
-  // Auth Routes (public)
-  app.use('/api/auth', createAuthRoutes(db));
-
-  // API Routes
-  app.use('/api/tournaments', createTournamentRoutes(db));
-  app.use('/api/tournaments/:tournamentId/registrations', createRegistrationRoutes(db));
-  app.use('/api/tournaments/:tournamentId/matches', createMatchRoutes(db));
-  app.use('/api/tournaments/:tournamentId/pools', createPoolRoutes(db));
-  app.use('/api/tournaments/:tournamentId/staff', createStaffRoutes(db));
-  app.use('/api/tournaments/:tournamentId/messages', createMessageRoutes(db));
-  app.use('/api/tournaments/:tournamentId/payments', createPaymentRoutes(db));
-
-  // Health check
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
-  });
-
   return { app, db };
-  app.db = db;
-  return app;
 }
 
 module.exports = { createApp };
-module.exports = createApp;
